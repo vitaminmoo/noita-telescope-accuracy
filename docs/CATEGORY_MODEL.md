@@ -57,14 +57,41 @@ they count toward recall/precision:
 `wand`, `chest`, `chest_great`, `potion`, `heart`, `item`, `shop_slot`, `enemy`.
 (`chest_content` is a derived score — see Layer 3.)
 
-### Game file → kind (`classifyGameFile` + `ITEM_KIND_RULES`)
-- `pixel_scene` / `*.png` / `biome_impl/` → `pixel_scene`
-- `entities/animals/…` or `category=mob` → `enemy`
-- within `items/`, first matching rule wins: `chest_random_super*`→`chest_great`;
-  `chest*`→`chest`; `wand*|flute|kantele|…`→`wand`; `potion*`→`potion`;
-  `heart*`→`heart`; `goldnugget|bloodmoney|physics_gold_orb`→`gold`;
-  `perk*`→`perk`; `egg_*`/`essence_*`→`item`; `shop_item|shop_potion|shop_cape`
-  →`shop_item`; otherwise →`item`.
+### Game file → kind (`classifyGameFile`)
+`classifyGameFile(file, category)` runs these tests **in order** and returns the
+first match as `{ kind, detail, covered }`. `detail` is always the file's
+basename (`heart.xml` → `heart`). The `covered:false` early-outs are the Layer-4A
+exceptions; they fire *before* the positive item rules:
+
+1. `category==='pixel_scene'` or path matches `*.png` / `biome_impl/` → **`pixel_scene`** (covered)
+2. boss victory-room rewards (`BOSS_REWARDS_RE`) → `other` *(covered:false — Layer 4A)*
+3. `wand_ghost.xml` → **`wand`** (covered) — the Magical Temple "wand ghost" is an
+   *enemy* (`category=mob`) that carries `wand_level_03` and drops it on death.
+   Telescope deliberately models the placement as the held wand (one `wand` POI),
+   so the game's mob and telescope's wand are the same placement; classifying the
+   ghost as `wand` lets them match instead of double-counting a wand-extra + an
+   enemy-miss.
+4. `category==='mob'` or path under `entities/animals/` → **`enemy`** (covered)
+5. path *outside* `items/pickup`, `items`, `animals` (`!COVERED_DIR_RE`) → `other`
+   *(covered:false — misc/particles/projectiles/props/traps; Layer 4A)*
+6. unmodeled item dir/name (`UNMODELED_ITEM_DIR_RE`/`UNMODELED_ITEM_NAME_RE`) →
+   `item` *(covered:false — Layer 4A)*
+7. Holy-Mountain temple heart (`HM_TEMPLE_HEART_RE`) → `heart` *(covered:false — Layer 4A)*
+8. within `items/`, first **`ITEM_KIND_RULES`** match wins (covered):
+
+   | basename matches | kind |
+   |---|---|
+   | `^chest_random_super` | `chest_great` |
+   | `^chest(_\|$)` · `^chest_leggy` | `chest` |
+   | `^wand` · `^starting_wand` · `^starting_bomb_wand` · `^broken_wand` · `^shop_wand` · `^flute` · `^kantele` · `^leukaluu_kantele` | `wand` |
+   | `^potion` | `potion` |
+   | `^heart` | `heart` |
+   | `^goldnugget` · `^bloodmoney` · `^physics_gold_orb` | `gold` |
+   | `^perk` · `^give_all_perks` · `^perk_reroll` | `perk` |
+   | `^egg_` · `^essence_` | `item` *(detail keeps the variant)* |
+   | `^shop_item$` · `^shop_potion$` · `^shop_cape$` | `shop_item` |
+
+9. no rule matched → **`item`** (covered) — the catch-all for pickups telescope models.
 
 ### Telescope category → kind (`TELESCOPE_CATEGORY_TO_KIND` + alignment remaps)
 Near-identity, plus these remaps so the two sides name the same thing the same
@@ -86,6 +113,14 @@ way (each prevents a double-counted miss+extra):
   wands" are spread ±100px in telescope for clickability; snapped back onto the
   game's ±20px positions. Same placements, cosmetic spacing.
 
+### Coordinate space (the join is in global world pixels)
+Both sides key on **global world pixel** `(x,y)`, rounded. Each `CanonRecord` also
+carries the chunk index (`cx,cy = floor(coord/512)`, matching the sweep) and the
+parallel-world indices `pw`/`pwv` derived from `x,y`. The main world is centred on
+`x=0` (`CHUNK=512`, `MAP_W=70` chunks NG0 / 64 NG+, `MAP_H=48`); a horizontal PW is
+one map-width over (`pw·70·512`), heaven is `pwv=-1`, hell `pwv=+1`. The good-wand
+snap is keyed on **pw-local** coordinates so it holds in every parallel world.
+
 ---
 
 ## Layer 3 — the match
@@ -104,6 +139,14 @@ and set-diff:
 chest, paired within 24px), not in the position diff — a reward spawns at a scratch
 coord, teleports onto the chest, and can upwarp through terrain, so its exact
 position is meaningless. Only meaningful on a force-open dump.
+
+**Placement vs. contents/stats.** For `CONTENTS_UNVERIFIABLE_KINDS`
+(`chest`, `chest_great`, `shop_slot`) a passive sweep can confirm the *placement*
+(the entity exists at this coordinate) but **not** the *contents/stats* (loot isn't
+rolled until opened; a wand's predicted spells/stats aren't on the dumped record).
+So position is scored; predicted contents/stats are quarantined as
+"unverifiable-by-sweep", never counted as a mismatch (this is the kind-level
+companion to the per-origin container rule in Layer 4D).
 
 ---
 
@@ -165,6 +208,8 @@ scored; only the contents drop.
 `compare.mjs <refA> <refB>` runs exactly this for two git refs and reports which
 of these real mismatches a change **fixes** vs **regresses**.
 
-> Maintenance note: this document is hand-kept in sync with
-> `scripts/lib/entity_identity.mjs`. When the standalone repo is built it should be
-> generated from the rule tables so it cannot drift.
+> Maintenance note: this document is hand-kept in sync with the rule tables in
+> `lib/entity_identity.mjs` (the MAPPING) and `lib/exceptions.mjs` (the EXCEPTIONS).
+> It is mirrored to the public `noita-telescope-accuracy` repo as `docs/CATEGORY_MODEL.md`.
+> Ideally it would be generated from those tables so it cannot drift; until then,
+> any rule change should update this file in the same commit.

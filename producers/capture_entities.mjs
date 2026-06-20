@@ -35,7 +35,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { PW_WIDTH_NG0, PW_WIDTH_NGP, PW_HEIGHT } from './lib/entity_identity.mjs';
+import { PW_WIDTH_NG0, PW_WIDTH_NGP, PW_HEIGHT } from '../src/lib/entity_identity.mjs';
 
 // Full main-world bbox — the sweep README's default (≈ the playable main world,
 // inset from the 70×48 biome map's void edges).

@@ -1,0 +1,3 @@
+node_modules/
+.compare-wt/
+src/mismatches.md

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "seed": 1,
+  "bbox_x": 20108,
+  "bbox_y": -6720,
+  "bbox_w": 32840,
+  "bbox_h": 27120,
+  "tile_size": 1024,
+  "types": [
+    "pixel_scene",
+    "item",
+    "mob"
+  ]
+}

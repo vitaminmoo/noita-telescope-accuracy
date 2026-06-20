@@ -1,0 +1,31 @@
+{
+  "seed": 1,
+  "ng": 0,
+  "quick": false,
+  "tile": 1024,
+  "types": [
+    "pixel_scene",
+    "item",
+    "mob"
+  ],
+  "base": {
+    "x": -15732,
+    "y": -6720,
+    "w": 32840,
+    "h": 27120
+  },
+  "regions": [
+    {
+      "name": "main",
+      "pw": 0,
+      "pwv": 0,
+      "bbox": {
+        "x": -15732,
+        "y": -6720,
+        "w": 32840,
+        "h": 27120
+      },
+      "dir": "main"
+    }
+  ]
+}

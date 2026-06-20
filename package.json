@@ -1,0 +1,15 @@
+{
+  "name": "noita-telescope-accuracy",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Accuracy harness for Noita Telescope: scores worldgen predictions against live-game ground truth, and diffs two git refs to show what a change fixes vs regresses.",
+  "scripts": {
+    "report": "node src/report.mjs",
+    "compare": "node src/compare.mjs"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.3",
+    "upng-js": "^2.1.0"
+  }
+}

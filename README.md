@@ -19,7 +19,11 @@ npm ci
 
 npm run report                                  # score the pinned submodule ref
 npm run compare -- <refA> <refB>                # diff two telescope git refs
+npm run compare-scenes                           # pixel-scene placement only
 ```
+
+`report` runs both scoring axes: the **entity diff** and the **pixel-scene
+placement diff** (`compare-scenes` is that second axis on its own).
 
 `compare` checks out each ref in the `telescope/` submodule (detached worktree under
 `.compare-wt/`, so its `js/` resolves this repo's `node_modules`), scores both against
@@ -38,11 +42,19 @@ default the submodule is pinned to.
 
 ## What it measures
 
-Telescope's `emitPoi` predictions vs the game's `sweep` dump, folded into one canonical
-kind space and matched on `(kind, x, y)`:
+Two complementary axes against the same `sweep` dump:
+
+**1. Entity diff** — telescope's `emitPoi` predictions vs the game's spawned
+entities, folded into one canonical kind space and matched on `(kind, x, y)`:
 
 - **recall** — % of the game's real spawns telescope predicts
 - **precision** — % of telescope's predictions that are real
+
+**2. Pixel-scene placement** — does telescope place the same gameplay *scenes*
+(altars, orb/essence/tele rooms, …) at the same positions as the game? Scored on
+`(sceneName, position ± tol)` over the names telescope can deterministically emit
+(static + biome-colour scenes). PRNG-rolled splice scenes aren't scored here —
+their contents fall to the entity diff, so nothing double-counts.
 
 The full model — what categories the game dumps, how each maps to a telescope category,
 and the **exceptions layer** (everything deliberately not scored, with the reason) — is
@@ -57,13 +69,14 @@ The ignore rules are declared in one place, `src/lib/exceptions.mjs`.
 telescope/            git submodule — the code under test (any ref via compare)
 fixtures/             committed game ground truth (the oracle); see fixtures/README.md
 src/                  the harness
-  report.mjs          score one ref → scorecard + mismatch triage
-  compare.mjs         score two refs → fixed/regressed delta
-  verify_entities.mjs the scorer (--json for machine output)
+  report.mjs          score one ref → entity scorecard + mismatch triage + scene placement
+  compare.mjs         score two refs → fixed/regressed delta (entity diff)
+  verify_entities.mjs the entity scorer (--json for machine output)
+  compare_scenes.mjs  the pixel-scene placement scorer (second axis)
   mismatch_report.mjs per-placement triage
   lib/telescope.mjs   bridge: imports telescope js/ from $TELESCOPE_DIR (swappable per ref)
   lib/entity_identity.mjs   category mapping (game file ↔ telescope category)
-  lib/exceptions.mjs        the ignore layer (what's not scored, and why)
+  lib/exceptions.mjs        the ignore layer (entity + scene rules, what's not scored and why)
 producers/            scripts that need the LIVE game to (re)generate fixtures
 docs/                 the model, findings, runbook
 ```

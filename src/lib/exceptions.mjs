@@ -1,9 +1,10 @@
 // The ignore layer of the accuracy model — every rule that deliberately drops a
 // row from scoring, in one declarative place, each with the reason it is NOT a
 // telescope bug. A row that survives ALL of these (and is in-mask, covered, and a
-// scored kind) is a real mismatch. See scripts/CATEGORY_MODEL.md for the prose.
+// scored kind) is a real mismatch. See docs/CATEGORY_MODEL.md for the prose.
 //
-// Pure data + pure functions; consumed by scripts/lib/entity_identity.mjs.
+// Pure data + pure functions; consumed by src/lib/entity_identity.mjs (entity
+// rules) and src/compare_scenes.mjs (the scene rules below).
 
 // ── Game-side coverage exclusions (yield covered:false in classifyGameFile) ──
 
@@ -78,8 +79,8 @@ export const TELESCOPE_BOSS_DROP_WAND_POS = new Set(['6912,8448']);
 //      pixel_scene, never as a dumped item.
 //  - portal     : the rainforest portal — never dumped as an item entity either
 //      (confirmed by the maintainer).
-// Scene-vs-placement for the pixel_scene ones is validated by verify.mjs's
-// pixel-scenes section, not the entity diff.
+// Scene-vs-placement for the pixel_scene ones is validated by the scene axis
+// (src/compare_scenes.mjs), not the entity diff.
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
     'chaos_die', 'greed_die', 'paha_silma', 'treasure', 'portal',
 ]);

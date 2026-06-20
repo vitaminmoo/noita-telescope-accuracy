@@ -1,9 +1,17 @@
 # The accuracy model: dump categories → canonical kinds → exceptions → real mismatches
 
-This is the map of how the harness decides whether telescope is right. It has
-four layers. Anything that survives all four is a **real mismatch** that should
-be fixed in noita-telescope; everything else is either matched or deliberately
-ignored with a documented reason.
+This is the map of how the harness decides whether telescope is right. The
+harness scores along **two independent axes**:
+
+1. the **entity diff** (`verify_entities.mjs`) — the four-layer model documented
+   below, which folds both sides into one `(kind, x, y)` space and set-diffs them;
+2. the **pixel-scene placement diff** (`compare_scenes.mjs`) — does telescope
+   place the same gameplay *scenes* at the same positions? (its own section near
+   the end).
+
+`report.mjs` runs both. For the entity diff, anything that survives all four
+layers is a **real mismatch** that should be fixed in noita-telescope; everything
+else is either matched or deliberately ignored with a documented reason.
 
 ```
   game sweep dump ─┐                          ┌─ exceptions / ignore layer ─┐
@@ -12,8 +20,10 @@ ignored with a documented reason.
                                               └─────────────────────────────┘   = REAL mismatch
 ```
 
-Source of truth for everything below: `scripts/lib/entity_identity.mjs`
-(canon + exceptions) and `scripts/verify_entities.mjs` (matching + scoring).
+Source of truth for everything below: `src/lib/entity_identity.mjs` (canon),
+`src/lib/exceptions.mjs` (the ignore rules — both entity and scene), and
+`src/verify_entities.mjs` (matching + scoring). The scene axis is scored by
+`src/compare_scenes.mjs`.
 
 ---
 
@@ -164,11 +174,29 @@ change telescope.
 | `items/(books\|orbs)/` + `essence_*\|spell_refresh\|musicstone\|greed_curse` | lore books, spell orbs, essences, HM refresh, musicstone, greed-curse | telescope deliberately doesn't model these |
 | `heart_fullhp_temple*` | Holy-Mountain temple hearts | telescope renders them as altar pixel-scene PIXELS, never as discrete POIs, so the entity diff can't match them |
 
+### A2. Game rows excluded by their spawn mechanism (`lua_stack`)
+The sweep records the Lua call-stack that spawned each entity, so a *non-worldgen,
+player-conditional* spawn can be dropped on the game side by the stack signature
+that produced it (`gameRowExcludedByLua`, `GAME_LUA_EXCLUDE_RE`). This is the
+game-side mirror of a telescope-side exclusion — without it the row is a pure
+game-has / telescope-lacks miss.
+
+| lua-stack frame matches | excluded | why |
+|---|---|---|
+| `workshop_trigger_check` | the pacifist Workshop reward (`chest_random` renamed `$item_chest_treasure_pacifist`) | spawned ONLY if `enemies_killed==0` in the biome; telescope *does* predict it but the harness drops its side as origin `pacifist_chest` (Layer 4D), so the game side is dropped symmetrically |
+
+Note the deliberate *non*-exclusion: **wizard-held wands are not dropped here**.
+Wizards carry a wand the sweep dumps coincident with the mob; telescope already
+models most of these as wands and matches them. The one that misses —
+`wand_unshuffle_03` under `wizard_weaken` @(-9030,516) — is a real telescope gap
+(it emits the wizard but not its wand), so it stays a real mismatch.
+
 ### B. Game kinds not in `TELESCOPE_KINDS` → `unmodeled` bucket (not a "miss")
 `gold`, `perk`, `shop_item`, `pixel_scene`, `other`. A game entity of these kinds
 can never be a telescope miss because telescope doesn't model them. (`pixel_scene`
-placement is validated separately by `verify.mjs`'s pixel-scenes section; a
-mis-fired scene gate shows up here as missing/extra *item* rows instead.)
+placement is validated separately by the scene axis — `compare_scenes.mjs`, see
+below; a mis-fired scene gate shows up *here* as missing/extra *item* rows
+instead, since a scene's worldgen spawns land or don't land regardless.)
 
 ### C. Telescope item details remapped to `unmodeled` (not a false `extra`)
 Real worldgen entities the camera sweep never dumps as items, so telescope's copy
@@ -198,18 +226,62 @@ scored; only the contents drop.
 
 ---
 
+## The second axis — pixel-scene placement (`compare_scenes.mjs`)
+
+The entity diff above asks *"are the right things spawned at the right spots?"*.
+The scene axis asks the complementary question: *"does telescope place the same
+gameplay **pixel scenes** at the same positions as the game?"* — the altars, orb
+rooms, essence rooms, tele rooms, and so on. It is a separate scorecard with its
+own recall/precision, run by `report.mjs` after the entity diff.
+
+### What each side emits
+- **Game**: every row of `pixel_scenes.ndjson`, identified by the PNG basename of
+  its `file` (`.../wand_altar.png` → `wand_altar`).
+- **Telescope**: only the scenes it can deterministically emit — **static** scenes
+  (`STATIC_PIXEL_SCENES`) plus **biome-colour** scenes (`PIXEL_SCENE_BIOMES`,
+  placed by reading the biome map pixel). PRNG-rolled *splice* scenes (e.g.
+  `wand_altar`/`potion_altar` rolled per-chunk) are **not** emitted here — their
+  contents are scored by the entity diff instead, so they don't double-count.
+
+### The match
+Both basenames are run through `SCENE_NAME_ALIAS` (Layer-4 §E) to a canonical
+name; the comparison is restricted to the **intersection of names telescope can
+emit** (a game scene whose name telescope never produces isn't a telescope bug,
+it's out of scope), then matched on `(sceneName, position ± tol)` (default
+`tol=64px`), clipped to the same coverage mask the entity diff uses.
+`Recall = matched/(matched+missing)`, `Precision = matched/(matched+extra)`,
+reported per scene name and as a total.
+
+### E. Scene-placement exceptions (`src/lib/exceptions.mjs`)
+The scene axis has its own ignore layer, the analogue of Layer 4 for scenes:
+
+| rule | applies to | why |
+|---|---|---|
+| `SCENE_NAME_ALIAS` (both sides) | `secret_lab→orbroom`, `essenceroom_submerged→essenceroom`, `scale_old→scale`, `teleroom→teleportroom` | telescope and the game use different basenames for the **same** scene; normalize so they pair instead of scoring a miss+extra |
+| `SCENE_CUSTOM_ART` (drop, both sides) | the HM/temple altars (`altar*`), `cauldron`, and the lava-lake structure (`lavalake*`) | telescope draws its own **custom art** here (its `surfaceOverlayScenes`) instead of emitting the underlying scene, so the game's scene would read as a telescope miss — but it isn't a bug. Curated by hand (telescope's custom-art set isn't an importable table); extend as more collisions are confirmed |
+| `SCENE_NONDETERMINISTIC_RE` (drop) | `desert_ruins_*` | the desert surface ruins depend on seed **and** coordinates **and** runtime entity ids — telescope can't and shouldn't predict them |
+
+> Scene invariant: a scene that is in-mask, of a telescope-emittable name,
+> survives every §E rule, and has no twin within `tol` on the other side is a
+> real scene-placement mismatch — telescope places a scene the game doesn't
+> (extra) or misses one the game places (missing).
+
+---
+
 ## The invariant
 
 > A row that is in-mask, covered, of a scored kind, survives every Layer-4
 > exception, and still has no twin on the other side **is a real mismatch** —
 > a `missing` (telescope under-predicts) or `extra` (telescope over-predicts)
-> that should be fixed in noita-telescope.
+> that should be fixed in noita-telescope. The scene axis has its own analogous
+> invariant (above).
 
 `compare.mjs <refA> <refB>` runs exactly this for two git refs and reports which
 of these real mismatches a change **fixes** vs **regresses**.
 
 > Maintenance note: this document is hand-kept in sync with the rule tables in
-> `lib/entity_identity.mjs` (the MAPPING) and `lib/exceptions.mjs` (the EXCEPTIONS).
-> It is mirrored to the public `noita-telescope-accuracy` repo as `docs/CATEGORY_MODEL.md`.
-> Ideally it would be generated from those tables so it cannot drift; until then,
-> any rule change should update this file in the same commit.
+> `src/lib/entity_identity.mjs` (the MAPPING) and `src/lib/exceptions.mjs` (the
+> EXCEPTIONS — both the entity rules and the scene rules in §E). Scene scoring
+> lives in `src/compare_scenes.mjs`. Ideally this doc would be generated from
+> those tables so it cannot drift; until then, any rule change should update this
+> file in the same commit.

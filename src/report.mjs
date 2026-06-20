@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 // Single entrypoint for the telescope accuracy report.
 //
-//   node scripts/report.mjs [SET_DIR]
+//   node src/report.mjs [SET_DIR]
 //   npm run report -- [SET_DIR]
 //
-// Does two things against a captured ground-truth dump:
-//   1. prints the scorecard (verify_entities) — enemies INCLUDED, because the
-//      worldgen RNG stream is shared, so telescope's enemy generation must be on
-//      for every other category's positions to line up;
-//   2. regenerates the per-item miss/extra triage at scripts/mismatches.md.
+// Does three things against a captured ground-truth dump:
+//   1. prints the entity scorecard (verify_entities) — enemies INCLUDED, because
+//      the worldgen RNG stream is shared, so telescope's enemy generation must be
+//      on for every other category's positions to line up;
+//   2. regenerates the per-item miss/extra triage at src/mismatches.md;
+//   3. prints the pixel-scene PLACEMENT scorecard (compare_scenes) — the second
+//      accuracy axis (see docs/CATEGORY_MODEL.md).
 //
 // SET_DIR is a dump dir (containing set.json). Defaults to $TELESCOPE_DUMP, then
-// the in-repo (gitignored) corpus at data/dumps/full_i.
+// the committed corpus at fixtures/full_i (data/dumps/full_i when run in-place
+// inside the telescope repo).
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';

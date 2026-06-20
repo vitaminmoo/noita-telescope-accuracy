@@ -38,3 +38,9 @@ run('verify_entities.mjs', [`--set=${set}`, '--show-enemies']);
 console.log('\n== mismatch triage ==');
 const out = join(here, 'mismatches.md');   // beside the scripts (scripts/ or src/)
 run('mismatch_report.mjs', [`--set=${set}`, `--out=${out}`]);
+
+// 3. Pixel-scene PLACEMENT score (complementary to the entity diff): does telescope
+//    place the same gameplay scenes as the game? Custom-art / non-deterministic /
+//    aliased scenes are handled in lib/exceptions.mjs.
+console.log('\n== pixel-scene placement ==');
+run('compare_scenes.mjs', [`--set=${set}`]);

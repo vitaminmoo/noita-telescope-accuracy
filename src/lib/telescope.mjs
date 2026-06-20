@@ -68,5 +68,11 @@ export async function loadGeneration() {
         getSpecialPoIs: poi.getSpecialPoIs,
         addStaticPixelScenes: statics.addStaticPixelScenes,
         updateSettings: settings.updateSettings,
+        // Scene-placement tables (telescope's static + biome-color scenes), for
+        // the pixel-scene placement comparison. prng-rolled splice scenes are not
+        // in telescope's scene output.
+        STATIC_PIXEL_SCENES: statics.STATIC_PIXEL_SCENES,
+        STATIC_PIXEL_SCENES_NIGHTMARE: statics.STATIC_PIXEL_SCENES_NIGHTMARE,
+        PIXEL_SCENE_BIOMES: statics.PIXEL_SCENE_BIOMES,
     };
 }

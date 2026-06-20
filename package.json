@@ -6,7 +6,8 @@
   "description": "Accuracy harness for Noita Telescope: scores worldgen predictions against live-game ground truth, and diffs two git refs to show what a change fixes vs regresses.",
   "scripts": {
     "report": "node src/report.mjs",
-    "compare": "node src/compare.mjs"
+    "compare": "node src/compare.mjs",
+    "compare-scenes": "node src/compare_scenes.mjs"
   },
   "devDependencies": {
     "canvas": "^3.2.3",

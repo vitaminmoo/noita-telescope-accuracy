@@ -17,15 +17,55 @@ export const BOSS_REWARDS_RE = /(^|\/)entities\/animals\/[^/]+\/rewards\//;
 export const UNMODELED_ITEM_DIR_RE = /(^|\/)entities\/items\/(books|orbs)\//;
 
 // More unmodeled item types, by basename: essences, Holy-Mountain spell-refresh
-// pickups, musicstone, the greed curse. Extend as more are confirmed.
-export const UNMODELED_ITEM_NAME_RE = /^essence_|^spell_refresh|^musicstone$|^greed_curse$/;
+// pickups, musicstone, the greed curse, surface critter eggs. Extend as more are
+// confirmed.
+//  - egg_worm : a surface critter-egg pickup placed by overground spawn pixels;
+//      telescope doesn't model these (3 in a full seed-1 sweep, all map-load with
+//      no spawn script). Minor and not worth predicting.
+export const UNMODELED_ITEM_NAME_RE = /^essence_|^spell_refresh|^musicstone$|^greed_curse$|^egg_worm$/;
 
 // Holy-Mountain temple full-HP hearts render in telescope as map PIXELS (part of
 // the altar pixel-scene), never as discrete POI entities, so the entity diff can
 // never match them. Captured in the dump but not scored.
 export const HM_TEMPLE_HEART_RE = /^heart_fullhp_temple/;
 
+// ── Game-side mechanism exclusions (driven by the dump's lua_stack) ──────────
+//
+// The sweep records the Lua call-stack that spawned each entity. Some stacks are
+// the signature of a NON-worldgen, player-conditional spawn that telescope can't
+// (and shouldn't) predict — the camera-only sweep happens to trigger them. A row
+// whose lua_stack matches here is dropped on the game side, the same way the
+// telescope side already drops its own copy.
+//  - workshop_trigger_check : the pacifist Workshop reward (chest_random renamed
+//      $item_chest_treasure_pacifist), spawned ONLY if enemies_killed==0 in the
+//      biome. Telescope DOES predict it but the harness excludes its side as
+//      origin 'pacifist_chest' (see isContainerContent), so exclude the game side
+//      symmetrically. Without this it's a pure game-has / telescope-lacks miss.
+export const GAME_LUA_EXCLUDE_RE = /workshop_trigger_check/;
+
+export function gameRowExcludedByLua(raw) {
+    const stack = raw?.lua_stack;
+    if (!Array.isArray(stack)) return false;
+    return stack.some((frame) => GAME_LUA_EXCLUDE_RE.test(frame));
+}
+
+// NB: wizard-held wands are NOT excluded. Wizards carry a wand (ItemChestComponent)
+// that the sweep dumps coincident with the mob, but telescope already models these
+// AS wands and matches them (e.g. wand_unshuffle_06 under wizard_tele/dark). The
+// one that misses — wand_unshuffle_03 under wizard_weaken @(-9030,516) — is a real
+// telescope gap (it emits the wizard enemy but not its wand), so it stays a real
+// mismatch rather than being excluded.
+
 // ── Telescope-side exclusions ────────────────────────────────────────────────
+
+// Telescope wand PoIs that are actually BOSS DROPS, not worldgen placements: the
+// game only spawns them after the boss dies, so a passive sweep never sees them
+// and telescope's copy is always a false extra. Keyed on PW-LOCAL (x,y) so it
+// holds across parallel worlds.
+//  - 6912,8448 : the Saha (generateExperimentalWand4, static_spawns.js) — the
+//      meat-realm boss drop; telescope's own comment calls it "a boss drop but
+//      I'm just treating it as a wand".
+export const TELESCOPE_BOSS_DROP_WAND_POS = new Set(['6912,8448']);
 
 // Telescope item `detail`s that are real worldgen entities the camera sweep never
 // dumps as items, so telescope's copy can never match — bucket as `unmodeled`
@@ -43,6 +83,52 @@ export const HM_TEMPLE_HEART_RE = /^heart_fullhp_temple/;
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
     'chaos_die', 'greed_die', 'paha_silma', 'treasure', 'portal',
 ]);
+
+// ── Pixel-scene placement exceptions (scripts/compare_scenes.mjs) ────────────
+//
+// Scenes telescope DELIBERATELY does not emit/render because it draws its own
+// custom art at that location (the Holy Mountains, the mountain altar, and more).
+// The game still places the underlying scene, so without this they read as
+// telescope "misses" — but they are not bugs. Excluded from the scene-placement
+// score on BOTH sides. Telescope's custom-art set lives in its frontend rendering
+// (no importable data table), so this list is curated by hand; extend it as more
+// custom-art scenes are confirmed.
+// The canonical custom-art set is telescope's `surfaceOverlayScenes` (app.js, gated
+// by the "Display Custom Art" checkbox): hiisi_hourglass, orb_room, cursed_orb_room,
+// echoing_spire, cauldron_room(_broken), moon, darkmoon — plus the baked
+// `surfaceOverlay` over the whole surface. We list only the ones that actually
+// collide in the scene diff (telescope emits a scene the game doesn't dump, or vice
+// versa) so the score isn't polluted.
+//  - Holy Mountain altar structure: the temple_altar* biome tiles
+//    (generator_config.js) are rendered as custom art, not the altar pixel scenes.
+//  - cauldron: the cauldron_room overlay is drawn as custom art; the game dumps no
+//    matching scene at that fixed spot, so telescope's `cauldron` is a custom-art
+//    extra, not a real over-prediction.
+//  - lava lake: the whole lava-lake structure (lavalake2 body + the lavalake_pit
+//    shaft tiles + racing track) is drawn as custom art, so telescope tiling the
+//    pit shaft is neither required nor scored. (user-confirmed)
+export const SCENE_CUSTOM_ART = new Set([
+    'altar', 'altar_left', 'altar_right', 'altar_right_snowcastle', 'altar_right_snowcave',
+    'cauldron',
+    'lavalake_pit', 'lavalake_pit_cracked', 'lavalake_racing', 'lavalake2', 'lavalake_pit_bottom',
+]);
+
+// Scenes the game places NON-DETERMINISTICALLY (depend on seed AND coordinates AND
+// runtime entity ids), so telescope can't and shouldn't predict them — a purposeful
+// miss, not a bug. Excluded from the scene-placement score.
+//  - desert_ruins_* : the desert surface ruins (base/block/etc.).
+export const SCENE_NONDETERMINISTIC_RE = /^desert_ruins_/;
+
+// Scene-name aliases: telescope and the game use different basenames for the SAME
+// scene. Normalize the GAME basename to telescope's name before matching so they
+// pair up instead of scoring a miss+extra. (Confirmed by exact-position coincidence
+// in the seed-1 dump.)
+export const SCENE_NAME_ALIAS = {
+    secret_lab: 'orbroom',                // the orb room is dumped as secret_lab
+    essenceroom_submerged: 'essenceroom', // submerged variant of the essence room
+    scale_old: 'scale',                   // the surface scale (kiuas) scene
+    teleroom: 'teleportroom',             // the teleport room
+};
 
 // ── Container-content exclusions (placement scored, unwrapped contents not) ──
 //

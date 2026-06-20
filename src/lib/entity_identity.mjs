@@ -24,6 +24,7 @@
 import {
     BOSS_REWARDS_RE, UNMODELED_ITEM_DIR_RE, UNMODELED_ITEM_NAME_RE, HM_TEMPLE_HEART_RE,
     TELESCOPE_UNMODELED_DETAILS, CONTAINER_ORIGINS, SHOP_ORIGINS, isContainerContent,
+    gameRowExcludedByLua, TELESCOPE_BOSS_DROP_WAND_POS,
 } from './exceptions.mjs';
 
 // Re-export the ignore-layer surface so existing importers (verify_entities.mjs,
@@ -224,11 +225,14 @@ export function canonGame(rec, isNGP = false) {
     let x = rec.x, y = rec.y;
     if (detail === 'gourd') ({ x, y } = snapGourd(x, y));
     const { cx, cy } = chunkOf(x, y);
+    // A non-worldgen, player-conditional spawn (identified by its lua_stack) is
+    // not something telescope predicts — drop it on the game side too.
+    const covered2 = covered && !gameRowExcludedByLua(rec);
     return {
         source: 'game', kind, detail,
         x, y, cx, cy,
         pw: pwIndexOf(x, isNGP), pwv: pwVerticalOf(y),
-        covered, raw: rec,
+        covered: covered2, raw: rec,
     };
 }
 
@@ -264,6 +268,13 @@ export function canonTelescope(rec, isNGP = false) {
         const pw = pwIndexOf(x, isNGP), off = pw * pwWidth(isNGP);
         const snap = GOOD_WAND_SNAP[`${Math.round(x - off)},${Math.round(y)}`];
         if (snap) { x = snap[0] + off; y = snap[1]; }
+    }
+    // Boss-drop wands (e.g. the Saha) only appear after the boss dies; a passive
+    // sweep never sees them, so telescope's copy is always a false extra. Keyed on
+    // PW-local position. Bucket as `unmodeled` so it leaves the scored set.
+    if (kind === 'wand') {
+        const off = pwIndexOf(x, isNGP) * pwWidth(isNGP);
+        if (TELESCOPE_BOSS_DROP_WAND_POS.has(`${Math.round(x - off)},${Math.round(y)}`)) kind = 'unmodeled';
     }
     const { cx, cy } = chunkOf(x, y);
     return {

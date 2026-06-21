@@ -98,7 +98,7 @@ const PIXEL_SCENE_RE = /\.png$|(^|\/)biome_impl\//;
 const ITEM_KIND_RULES = [
     [/^chest_random_super/, 'chest_great'],
     [/^chest(_|$)|^chest_leggy/, 'chest'],
-    [/^wand|^starting_wand|^starting_bomb_wand|^broken_wand|^shop_wand|^flute$|^kantele$|^leukaluu_kantele$/, 'wand'],
+    [/^wand|^experimental_wand|^starting_wand|^starting_bomb_wand|^broken_wand|^shop_wand|^flute$|^kantele$|^leukaluu_kantele$/, 'wand'],
     [/^potion/, 'potion'],
     [/^heart/, 'heart'],
     [/^goldnugget|^bloodmoney|^physics_gold_orb/, 'gold'],

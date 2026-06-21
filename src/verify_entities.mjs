@@ -174,6 +174,39 @@ function scoreChestContents(gameContent, teleContent, anchorTol = 24) {
     return { matched, missing, extra, chestsPaired, chestsGameOnly, chestsTeleOnly, sampleMiss, sampleExtra };
 }
 
+// Score spell-card PLACEMENT (not identity). All cards share action.xml and
+// telescope predicts a spell's position but, for most mechanisms, not which spell
+// (its `detail` is the literal 'spell'), so an exact (kind,x,y) diff is wrong on
+// two counts: identity is unknowable and dispensed cards land at a jittered coord.
+// Instead match each game card to the nearest telescope spell prediction within
+// `tol` px (greedy, one-to-one), like a position-tolerant set diff. matched =
+// telescope predicted a spell at that placement; missing = game placed one
+// telescope didn't; extra = telescope predicted one the game didn't place.
+function scoreSpells(gameSpells, teleSpells, tol = 24) {
+    const used = new Set();
+    let matched = 0, missing = 0;
+    const sampleMiss = [], sampleExtra = [];
+    for (const g of gameSpells) {
+        let bi = -1, bd = tol + 1;
+        for (let i = 0; i < teleSpells.length; i++) {
+            if (used.has(i)) continue;
+            const t = teleSpells[i];
+            const d = Math.max(Math.abs(g.x - t.x), Math.abs(g.y - t.y));
+            if (d < bd) { bd = d; bi = i; }
+        }
+        if (bi >= 0) { used.add(bi); matched++; }
+        else { missing++; if (sampleMiss.length < 30) sampleMiss.push({ x: Math.round(g.x), y: Math.round(g.y), detail: g.detail, origin: g.raw?.lua_stack?.find?.((f) => !f.startsWith('[C]'))?.split('"]')[0]?.split('/').pop() || null }); }
+    }
+    let extra = 0;
+    for (let i = 0; i < teleSpells.length; i++) {
+        if (used.has(i)) continue;
+        extra++;
+        const t = teleSpells[i];
+        if (sampleExtra.length < 30) sampleExtra.push({ x: Math.round(t.x), y: Math.round(t.y), detail: t.detail, origin: t.raw?.origin || null });
+    }
+    return { matched, missing, extra, sampleMiss, sampleExtra };
+}
+
 async function main() {
     const opts = parseArgs(process.argv.slice(2));
     // In --json mode stdout must carry ONLY the JSON object (compare.mjs parses
@@ -216,7 +249,14 @@ async function main() {
         const gameCanon = gameRaw.map((r) => canonGame(r, isNGP));
         // Force-open reward rows carry chest_eid — scored separately as chest
         // content, not in the exact-position diff (they upwarp/teleport).
-        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && anchorInMask(r.raw.chest_x, r.raw.chest_y));
+        // (spell cards carry chest_eid too but are scored by placement, not as
+        // chest loot — exclude them here so lootKind doesn't mis-bucket e.g. BOMB.)
+        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && r.kind !== 'spell' && anchorInMask(r.raw.chest_x, r.raw.chest_y));
+        // Spell cards (kind 'spell') are scored by placement, not the exact diff —
+        // see scoreSpells. Include both directly-placed and container-dispensed
+        // cards (telescope emits dispense spells at slot positions, not as
+        // parent-anchored content, so they belong here, not in chest_content).
+        const gameSpells = gameCanon.filter((r) => r.kind === 'spell' && inMask(mask, r));
         const game = gameCanon.filter((r) => r.raw.chest_eid == null && r.covered && TELESCOPE_KINDS.has(r.kind) && inMask(mask, r));
 
         // Telescope side: this PW, clipped to mask, same kind filter. Container
@@ -226,7 +266,9 @@ async function main() {
         const teleAll = teleCanonAll.filter((r) => TELESCOPE_KINDS.has(r.kind) && inMask(mask, r));
         const tele = teleAll.filter((r) => !isContainerContent(r));
         const contentExcluded = teleAll.length - tele.length;
-        const teleChestContent = teleCanonAll.filter((r) => r.raw.parentX != null && anchorInMask(r.raw.parentX, r.raw.parentY));
+        const teleChestContent = teleCanonAll.filter((r) => r.raw.parentX != null && r.kind !== 'spell' && anchorInMask(r.raw.parentX, r.raw.parentY));
+        // Telescope spell predictions (kind 'spell'), in-mask — scored by placement.
+        const teleSpells = teleCanonAll.filter((r) => r.kind === 'spell' && inMask(mask, r));
 
         const d = diff(game, tele);
         const acc = {};
@@ -243,6 +285,17 @@ async function main() {
         if (opts.dump && (!opts.kind || opts.kind === 'chest_content')) {
             for (const s of cc.sampleMiss) if (sampleMissing.length < opts.dump) sampleMissing.push({ region: region.name, kind: 'chest_content', x: s.chest, y: '', detail: `${s.kind} [${s.side}]`, raw: {} });
             for (const s of cc.sampleExtra) if (sampleExtra.length < opts.dump) sampleExtra.push({ region: region.name, kind: 'chest_content', x: s.chest, y: '', detail: `${s.kind}${s.side ? ' [' + s.side + ']' : ''}`, raw: { origin: 'chest' } });
+        }
+
+        // Spell-card PLACEMENT (position-tolerant; identity unknowable). Only
+        // meaningful on a dump that captured cards (else gameSpells ~= 0).
+        const sc = scoreSpells(gameSpells, teleSpells);
+        tally(acc, 'spell', 'matched', sc.matched);
+        tally(acc, 'spell', 'missing', sc.missing);
+        tally(acc, 'spell', 'extra', sc.extra);
+        if (opts.dump && (!opts.kind || opts.kind === 'spell')) {
+            for (const s of sc.sampleMiss) if (sampleMissing.length < opts.dump) sampleMissing.push({ region: region.name, kind: 'spell', x: s.x, y: s.y, detail: `${s.detail || ''} [${s.origin || '?'}]`, raw: {} });
+            for (const s of sc.sampleExtra) if (sampleExtra.length < opts.dump) sampleExtra.push({ region: region.name, kind: 'spell', x: s.x, y: s.y, detail: s.detail || '', raw: { origin: s.origin } });
         }
 
         for (const k of Object.keys(acc)) { tally(overall, k, 'matched', acc[k].matched); tally(overall, k, 'missing', acc[k].missing); tally(overall, k, 'extra', acc[k].extra); }

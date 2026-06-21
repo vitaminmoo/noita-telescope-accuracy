@@ -144,20 +144,19 @@ export const CONTAINER_ORIGINS = new Set([
     'dragon', 'meditation_cube', 'robot_egg', 'utility_box',
 ]);
 
-// Shop origins place real item entities at worldgen — but only PHYSICAL stock
-// (wands) is dumped as a discrete pickup the sweep observes; a spell purchase is
-// not (a seed-1 HM spell-shop dump held only shop_hitbox + sale_indicator, never
-// a card). So shop *wands* are kept and scored; shop *spells* are excluded below.
+// Shop origins place real item entities at worldgen. Physical stock (wands) dumps
+// as a discrete pickup; spell stock is captured too now (the CreateItemActionEntity
+// hook), but as `spell`-kind cards scored by PLACEMENT (scoreSpells), not here.
 export const SHOP_ORIGINS = new Set(['shop', 'laboratory', 'holy_mountain_shop', 'hourglass_shop']);
 
 // Is this telescope canon-row a container's content (vs a real placement)?
 export function isContainerContent(row) {
     const origin = row.raw?.origin;
-    // Spells are never dumped as discrete worldgen pickup entities anywhere — not
-    // shop stock, not utility-box dispensed, not boss drops (a seed-1 broad sweep
-    // had ZERO generic spell-card pickups). So any spell row is unverifiable.
-    if (row.kind === 'shop_slot' || row.detail === 'spell') return true;
-    if (SHOP_ORIGINS.has(origin) && row.detail === 'spell') return true;
+    // Spell predictions are folded to the `spell` kind in canonTelescope and scored
+    // by placement (scoreSpells) — they never reach here (not in TELESCOPE_KINDS). A
+    // remaining shop_slot row is non-spell shop stock (e.g. a laboratory item) the
+    // sweep can't observe unrolled, so it stays excluded.
+    if (row.kind === 'shop_slot') return true;
     // The Holy Mountain pacifist chest is player-conditional (only appears if the
     // player doesn't attack) — a passive sweep never triggers it, so telescope's
     // pacifist_chest placement + contents are always false extras. Exclude both.

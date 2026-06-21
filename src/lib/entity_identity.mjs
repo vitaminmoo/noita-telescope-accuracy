@@ -122,6 +122,15 @@ export function classifyGameFile(file, category) {
     if (category === 'pixel_scene' || PIXEL_SCENE_RE.test(file)) {
         return { kind: 'pixel_scene', detail, covered: true };
     }
+    // Spell cards. All cards share data/entities/misc/custom_cards/action.xml, so
+    // baseName is the useless 'action' — canonGame overrides detail with the dump's
+    // action_id (the real spell identity). Telescope predicts spell PLACEMENT (a
+    // spell is here) but not identity, so the `spell` kind is scored by position
+    // (scoreSpells), not by the exact (kind,x,y) diff. Wand-internal AddGunAction
+    // cards are filtered out producer-side, so what reaches here is world-placed.
+    if (/(^|\/)entities\/misc\/custom_cards\//.test(file)) {
+        return { kind: 'spell', detail, covered: true };
+    }
     // Boss victory-room rewards — see exceptions.BOSS_REWARDS_RE.
     if (BOSS_REWARDS_RE.test(file)) {
         return { kind: 'other', detail, covered: false };
@@ -221,7 +230,12 @@ export const CONTENTS_UNVERIFIABLE_KINDS = new Set(['chest', 'chest_great', 'sho
 //   covered: is this a kind telescope models? (game side; always true telescope side)
 //   raw    : the original record, for debugging / drill-down
 export function canonGame(rec, isNGP = false) {
-    const { kind, detail, covered } = classifyGameFile(rec.file, rec.category);
+    const { kind, covered } = classifyGameFile(rec.file, rec.category);
+    let detail = classifyGameFile(rec.file, rec.category).detail;
+    // Spell cards: the file basename is the shared 'action'; the dump's action_id
+    // is the real spell identity (e.g. BOMB). Keep it for drill-down even though
+    // scoring is placement-only (telescope can't predict the rolled spell).
+    if (kind === 'spell' && rec.action_id) detail = rec.action_id;
     let x = rec.x, y = rec.y;
     if (detail === 'gourd') ({ x, y } = snapGourd(x, y));
     const { cx, cy } = chunkOf(x, y);
@@ -238,6 +252,14 @@ export function canonGame(rec, isNGP = false) {
 
 export function canonTelescope(rec, isNGP = false) {
     let kind = TELESCOPE_CATEGORY_TO_KIND[rec.category] || rec.category || 'other';
+    // Spell predictions (shop stock, utility-box / chest / boss / puzzle / eye-room
+    // dispense) come through as shop_slot(subtype shop_spell) or item(detail 'spell').
+    // Fold them all to the `spell` kind so they're scored by PLACEMENT (scoreSpells,
+    // position-tolerant) rather than the exact (kind,x,y) diff — telescope predicts a
+    // spell is here, but for most mechanisms not which one (detail is the literal
+    // 'spell'). This supersedes the old shop_slot/detail=='spell' container-content
+    // exclusion now that the sweep observes placed cards.
+    if (rec.subtype === 'shop_spell' || rec.detail === 'spell') kind = 'spell';
     // broken_wand is emitted by generateItem as an `item` (detail broken_wand),
     // but the game-side classifier maps broken_wand.xml to `wand` (ITEM_KIND_RULES
     // ^broken_wand). Align telescope to that so the two sides can match instead of

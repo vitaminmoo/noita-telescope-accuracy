@@ -18,6 +18,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHUNK, canonGame, canonTelescope, TELESCOPE_KINDS, isContainerContent } from './lib/entity_identity.mjs';
+import { isTelescopeLatentSpell } from './lib/exceptions.mjs';
 import { setupTelescope, generateForPW } from './lib/telescope_entities.mjs';
 
 function parseArgs(argv) {
@@ -272,7 +273,12 @@ async function main() {
         const contentExcluded = teleAll.length - tele.length;
         const teleChestContent = teleCanonAll.filter((r) => r.raw.parentX != null && r.kind !== 'spell' && anchorInMask(r.raw.parentX, r.raw.parentY));
         // Telescope spell predictions (kind 'spell'), in-mask — scored by placement.
-        const teleSpells = teleCanonAll.filter((r) => r.kind === 'spell' && inMask(mask, r));
+        // Drop event-triggered latent-loot extras (boss-victory drops + solved-tablet
+        // puzzle cards) the same way the game side drops its lua-stack exclusions:
+        // these only spawn on a kill/solve the passive sweep never performs, so they'd
+        // be unmatchable false `spell` extras (see isTelescopeLatentSpell — every
+        // excluded origin has no game spell in its band, so no matched card is lost).
+        const teleSpells = teleCanonAll.filter((r) => r.kind === 'spell' && inMask(mask, r) && !isTelescopeLatentSpell(r));
 
         const d = diff(game, tele);
         const acc = {};

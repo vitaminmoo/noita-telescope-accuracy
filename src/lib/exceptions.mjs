@@ -87,6 +87,32 @@ export function gameRowExcludedByLua(raw) {
 //      I'm just treating it as a wand".
 export const TELESCOPE_BOSS_DROP_WAND_POS = new Set(['6912,8448']);
 
+// Telescope `spell` EXTRAS that are EVENT-TRIGGERED latent loot — the cards only
+// instantiate when the player kills a boss or solves a tablet puzzle, so the
+// passive non-kill/non-solve sweep can never contain them and telescope's copy is
+// always a false `spell` extra. Mirror of the game-side isTheEndShopSpell drop:
+// these telescope rows leave the spell-extras set instead of understating spell
+// precision. Keyed on the row's `origin` tag (set by static_spawns.js /
+// misc_generation.js). Every origin here has ZERO game-side spells in its coord
+// band in the seed-1 sweep (verified), so dropping them removes ONLY unmatched
+// extras and cannot convert any matched card into a miss:
+//  - triangle_boss / alchemist_boss / pyramid_boss / dragon : boss-victory spell
+//      drops (misc_generation.js) at the boss coords — spawned only after the kill.
+//  - puzzle : the two lake reforged/colour tablet puzzles (static_spawns.js) —
+//      the 8+8 reward cards (x −12834..−12392 / y 394..615) only spawn when the
+//      tablet puzzle is solved. The MATCHED puzzle/instrument cards do NOT use
+//      origin 'puzzle': OCARINA cards are origin 'shop' (ocarina shop), KANTELE
+//      origin 'shop', and the standalone RAINBOW_TRAIL card is origin 'item' — so
+//      keying on origin 'puzzle' leaves all 150 matched cards untouched.
+export const TELESCOPE_LATENT_SPELL_ORIGINS = new Set([
+    'triangle_boss', 'alchemist_boss', 'pyramid_boss', 'dragon', 'puzzle',
+]);
+
+// Is this telescope `spell` row an event-triggered latent-loot extra (above)?
+export function isTelescopeLatentSpell(row) {
+    return row.kind === 'spell' && TELESCOPE_LATENT_SPELL_ORIGINS.has(row.raw?.origin);
+}
+
 // Telescope item `detail`s that are real worldgen entities the camera sweep never
 // dumps as items, so telescope's copy can never match — bucket as `unmodeled`
 // (not a scored kind) instead of counting a false `item` extra:

@@ -44,9 +44,28 @@ export const HM_TEMPLE_HEART_RE = /^heart_fullhp_temple/;
 //      symmetrically. Without this it's a pure game-has / telescope-lacks miss.
 export const GAME_LUA_EXCLUDE_RE = /workshop_trigger_check/;
 
+// the_end biome mid-region Holy-Mountain SHOP spell cards (the side-room shops
+// placed by the_end.lua:426 via generate_shop_item.lua, seed-1 at LEFT x −2405..
+// −1315 / RIGHT x 2355..3175, y ≈ 19327..20267). Telescope models the HM
+// central-column temple shops and the static heaven/hell end-shops, but NOT
+// these the_end in-biome side-room shops yet, so it emits no spell card there and
+// every one reads as a `spell` miss. Excluded for now; faithfully modeling them
+// needs a live the_end game dump. The signature is the COMBINATION of
+// generate_shop_item.lua AND the_end.lua in the same stack — the_end.lua appears
+// on NO matched spell row, and the 149 matched HM-temple/end-shop cards use
+// generate_shop_item.lua with a DIFFERENT biome script (temple_altar, vault,
+// excavationsite, …) or a pixel-scene placement, so this drops only these 50.
+export function isTheEndShopSpell(raw) {
+    const stack = raw?.lua_stack;
+    if (!Array.isArray(stack)) return false;
+    return stack.some((frame) => /generate_shop_item\.lua/.test(frame))
+        && stack.some((frame) => /biomes\/the_end\.lua/.test(frame));
+}
+
 export function gameRowExcludedByLua(raw) {
     const stack = raw?.lua_stack;
     if (!Array.isArray(stack)) return false;
+    if (isTheEndShopSpell(raw)) return true;
     return stack.some((frame) => GAME_LUA_EXCLUDE_RE.test(frame));
 }
 

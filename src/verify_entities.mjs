@@ -257,7 +257,10 @@ async function main() {
         // see scoreSpells. Include both directly-placed and container-dispensed
         // cards (telescope emits dispense spells at slot positions, not as
         // parent-anchored content, so they belong here, not in chest_content).
-        const gameSpells = gameCanon.filter((r) => r.kind === 'spell' && inMask(mask, r));
+        // `covered` drops game-side lua-stack exclusions (see gameRowExcludedByLua
+        // → isTheEndShopSpell): the_end biome side-room shop cards telescope doesn't
+        // model yet are removed here so they don't score as spell misses.
+        const gameSpells = gameCanon.filter((r) => r.kind === 'spell' && r.covered && inMask(mask, r));
         const game = gameCanon.filter((r) => r.raw.chest_eid == null && r.covered && TELESCOPE_KINDS.has(r.kind) && inMask(mask, r));
 
         // Telescope side: this PW, clipped to mask, same kind filter. Container

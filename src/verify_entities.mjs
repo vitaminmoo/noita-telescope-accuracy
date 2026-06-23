@@ -100,7 +100,7 @@ function lootKind(s0) {
     if (/gold_orb|shiny_orb|greed_orb/.test(s)) return 'gold_orb';
     if (/goldnugget|bloodmoney|^gold$|moneyamount/.test(s)) return 'gold';
     if (/potion/.test(s)) return 'potion';
-    if (/powder_stash|powder/.test(s)) return 'powder_stash';
+    if (/powder_stash|powder|pouch/.test(s)) return 'powder_stash'; // telescope emits 'pouch'
     if (/heart/.test(s)) return 'heart';
     if (/runestone/.test(s)) return 'runestone';
     if (/die/.test(s)) return 'die';
@@ -108,8 +108,9 @@ function lootKind(s0) {
     if (/spell_refresh/.test(s)) return 'spell_refresh';
     if (/moon|kuu/.test(s)) return 'moon';
     if (/brimstone/.test(s)) return 'brimstone';
-    if (/thunderstone|kiuaskivi/.test(s)) return 'thunderstone';
-    if (/safe_haven/.test(s)) return 'safe_haven';
+    if (/thunderstone|ukkoskivi/.test(s)) return 'thunderstone'; // game file=thunderstone, telescope item=ukkoskivi
+    if (/kiuaskivi|saunastone|firestone/.test(s)) return 'kiuaskivi'; // sauna/heat stone — distinct from thunderstone
+    if (/safe_haven|kammi/.test(s)) return 'safe_haven'; // telescope emits 'kammi'
     if (/evil_eye/.test(s)) return 'evil_eye';
     if (/random_card|spell_/.test(s)) return 'card';
     if (/^chest|mimic/.test(s)) return null; // nested chest / mimic — skip

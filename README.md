@@ -37,10 +37,10 @@ npm run compare -- prog-908a7c0 prog-8a607fb
 ```
 
 Both refs must be headless-importable; if one isn't, `compare` says so and points at
-PR #5. The submodule is pinned to `main-pr5`: upstream `main` with PR #5's three
-headless commits cherry-picked on top (upstream absorbed the old fork accuracy
-fixes). The `prog-<sha>` branches in the submodule are historical upstream refs
-with the same PR #5 commits applied, kept for progression comparisons.
+PR #5 — which upstream merged (`fcde3a0 "Attempt merge #5"`), so the submodule is
+now pinned directly to upstream `main`. The `prog-<sha>` branches in the submodule
+are historical upstream refs with the PR #5 commits cherry-picked on top, kept for
+progression comparisons across the pre-merge era.
 
 ## What it measures
 

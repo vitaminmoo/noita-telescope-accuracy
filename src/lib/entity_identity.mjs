@@ -260,10 +260,14 @@ export function canonGame(rec, isNGP = false) {
 //  - chaos_die / greed_die : the game's entity files are physics_die.xml /
 //      physics_greed_die.xml, so dumped rows carry those basenames (proven by
 //      full_24: two physics_die rows exactly at telescope's chaos_die coords).
+//  - kiuaskivi : telescope names the sauna stone by its display name; the game
+//      entity is brimstone.xml ($item_brimstone = "Kiuaskivi" — there is no
+//      kiuaskivi.xml). Same misc-table slot on both sides.
 const TELESCOPE_DETAIL_ALIAS = {
     runestone_magma: 'runestone_lava',
     chaos_die: 'physics_die',
     greed_die: 'physics_greed_die',
+    kiuaskivi: 'brimstone',
 };
 
 export function canonTelescope(rec, isNGP = false) {

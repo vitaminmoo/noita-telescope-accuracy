@@ -108,9 +108,8 @@ function lootKind(s0) {
     if (/bomb/.test(s)) return 'bomb';
     if (/spell_refresh/.test(s)) return 'spell_refresh';
     if (/moon|kuu/.test(s)) return 'moon';
-    if (/brimstone/.test(s)) return 'brimstone';
+    if (/brimstone|kiuaskivi|saunastone|firestone/.test(s)) return 'brimstone'; // game file=brimstone, display/telescope name=Kiuaskivi — same item
     if (/thunderstone|ukkoskivi/.test(s)) return 'thunderstone'; // game file=thunderstone, telescope item=ukkoskivi
-    if (/kiuaskivi|saunastone|firestone/.test(s)) return 'kiuaskivi'; // sauna/heat stone — distinct from thunderstone
     if (/safe_haven|kammi/.test(s)) return 'safe_haven'; // telescope emits 'kammi'
     if (/evil_eye/.test(s)) return 'evil_eye';
     if (/random_card|spell_/.test(s)) return 'card';

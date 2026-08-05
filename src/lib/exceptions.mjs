@@ -204,10 +204,14 @@ export const SCENE_NAME_ALIAS = {
 // container PLACEMENT (kind chest/chest_great) stays scored; only contents drop.
 // Chest contents are instead scored separately by loot-KIND per parent chest
 // (see scoreChestContents in verify_entities.mjs).
+// Solve-reward origins (puzzle, vault_puzzle) are the same shape: the reward
+// only spawns in the puzzle's material_area_checker_success callback (e.g.
+// vault_lab_puzzle_check.lua), so a passive non-solve sweep never contains it —
+// only the receptacle buildings exist at worldgen (live-verified).
 export const CONTAINER_ORIGINS = new Set([
     'chest', 'pacifist_chest', 'great_chest', 'tiny', 'starting_loadout',
-    'eye_room', 'puzzle', 'pyramid_boss', 'alchemist_boss', 'triangle_boss',
-    'dragon', 'meditation_cube', 'robot_egg', 'utility_box',
+    'eye_room', 'puzzle', 'vault_puzzle', 'pyramid_boss', 'alchemist_boss',
+    'triangle_boss', 'dragon', 'meditation_cube', 'robot_egg', 'utility_box',
 ]);
 
 // Shop origins place real item entities at worldgen. Physical stock (wands) dumps

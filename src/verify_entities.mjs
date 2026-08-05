@@ -226,7 +226,7 @@ async function main() {
     const sampleMissing = [], sampleExtra = [];
     // Full (uncapped) instance lists for --json — compare.mjs diffs these by
     // (kind,x,y) to list which exact placements a ref fixed vs regressed.
-    const allMissing = [], allExtra = [];
+    const allMissing = [], allExtra = [], allSamples = [];
     const jrow = (region, r) => ({ region, kind: r.kind, x: Math.round(r.x), y: Math.round(r.y), detail: r.detail || null, origin: r.raw?.origin || null, file: r.raw?.file || null });
     const perRegion = [];
 
@@ -292,6 +292,8 @@ async function main() {
         tally(acc, 'chest_content', 'matched', cc.matched);
         tally(acc, 'chest_content', 'missing', cc.missing);
         tally(acc, 'chest_content', 'extra', cc.extra);
+        for (const x of cc.sampleMiss) allSamples.push({ region: region.name, kind: 'chest_content', side: 'miss', chest: x.chest, loot: x.kind, note: x.side });
+        for (const x of cc.sampleExtra) allSamples.push({ region: region.name, kind: 'chest_content', side: 'extra', chest: x.chest, loot: x.kind, note: x.side || null });
         if (opts.dump && (!opts.kind || opts.kind === 'chest_content')) {
             for (const s of cc.sampleMiss) if (sampleMissing.length < opts.dump) sampleMissing.push({ region: region.name, kind: 'chest_content', x: s.chest, y: '', detail: `${s.kind} [${s.side}]`, raw: {} });
             for (const s of cc.sampleExtra) if (sampleExtra.length < opts.dump) sampleExtra.push({ region: region.name, kind: 'chest_content', x: s.chest, y: '', detail: `${s.kind}${s.side ? ' [' + s.side + ']' : ''}`, raw: { origin: 'chest' } });
@@ -303,6 +305,8 @@ async function main() {
         tally(acc, 'spell', 'matched', sc.matched);
         tally(acc, 'spell', 'missing', sc.missing);
         tally(acc, 'spell', 'extra', sc.extra);
+        for (const x of sc.sampleMiss) allSamples.push({ region: region.name, kind: 'spell', side: 'miss', x: x.x, y: x.y, origin: x.origin });
+        for (const x of sc.sampleExtra) allSamples.push({ region: region.name, kind: 'spell', side: 'extra', x: x.x, y: x.y, origin: x.origin });
         if (opts.dump && (!opts.kind || opts.kind === 'spell')) {
             for (const s of sc.sampleMiss) if (sampleMissing.length < opts.dump) sampleMissing.push({ region: region.name, kind: 'spell', x: s.x, y: s.y, detail: `${s.detail || ''} [${s.origin || '?'}]`, raw: {} });
             for (const s of sc.sampleExtra) if (sampleExtra.length < opts.dump) sampleExtra.push({ region: region.name, kind: 'spell', x: s.x, y: s.y, detail: s.detail || '', raw: { origin: s.origin } });
@@ -319,6 +323,9 @@ async function main() {
             kinds: overall,            // { kind: {matched,missing,extra} }
             missing: allMissing,       // game has, telescope lacks (per placement)
             extra: allExtra,           // telescope invented (per placement)
+            // spell / chest_content score by placement or chest-pairing, so their
+            // mismatches aren't rows in missing/extra above — examples live here.
+            samples: allSamples,
         }) + '\n');
         return;
     }

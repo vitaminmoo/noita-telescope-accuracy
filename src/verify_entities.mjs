@@ -255,7 +255,12 @@ async function main() {
         // The lua-stack exclusions apply here too: pacifist Workshop chests spawn
         // (and get force-opened) on SOME sweeps, so their loot must drop with the
         // placement or it scores as a phantom miss on those captures.
-        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && r.kind !== 'spell' && !gameRowExcludedByLua(r.raw) && anchorInMask(r.raw.chest_x, r.raw.chest_y));
+        // Leggy-mimic rewards are also skipped: telescope predicts the chest_leggy
+        // PLACEMENT (still scored) but models no contents for it, so its force-open
+        // loot group would always read as a false no-tele-chest miss.
+        const leggyAnchors = new Set(gameCanon.filter((r) => r.detail === 'chest_leggy').map((r) => `${Math.round(r.x)},${Math.round(r.y)}`));
+        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && r.kind !== 'spell' && !gameRowExcludedByLua(r.raw) && anchorInMask(r.raw.chest_x, r.raw.chest_y)
+            && !leggyAnchors.has(`${Math.round(r.raw.chest_x)},${Math.round(r.raw.chest_y)}`));
         // Spell cards (kind 'spell') are scored by placement, not the exact diff —
         // see scoreSpells. Include both directly-placed and container-dispensed
         // cards (telescope emits dispense spells at slot positions, not as

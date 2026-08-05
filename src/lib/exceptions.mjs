@@ -239,6 +239,12 @@ export function isContainerContent(row) {
     // The utility-box placement marker (item · utility_box) is the scorable entity;
     // its dispensed contents are unobservable until shot open, so drop only those.
     if (origin === 'utility_box') return row.detail !== 'utility_box';
+    // Receptacle-puzzle POIs bundle the player-conditional solve reward (the
+    // special wand, spawned only by material_area_checker_success) with the
+    // empty potion the oil receptacle loads at worldgen — that potion is a
+    // real placement. Keyed on the specific item so chest loot carried by
+    // other puzzle POIs (oiltank/swing) stays excluded.
+    if (origin === 'puzzle' && row.detail === 'potion_empty') return false;
     if (row.kind === 'chest' || row.kind === 'chest_great') return false; // the container itself
     return true;
 }

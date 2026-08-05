@@ -18,11 +18,16 @@ export const BOSS_REWARDS_RE = /(^|\/)entities\/animals\/[^/]+\/rewards\//;
 export const UNMODELED_ITEM_DIR_RE = /(^|\/)entities\/items\/(books|orbs)\//;
 
 // More unmodeled item types, by basename: essences, Holy-Mountain spell-refresh
-// pickups, musicstone, the greed curse, surface critter eggs. Extend as more are
-// confirmed.
-//  - egg_worm : a surface critter-egg pickup placed by overground spawn pixels;
-//      telescope doesn't model these (3 in a full seed-1 sweep, all map-load with
-//      no spawn script). Minor and not worth predicting.
+// pickups, musicstone, the greed curse. Extend as more are confirmed.
+//  - egg_worm : the surface "Three eggs" critter eggs. Telescope DOES model these
+//      (static_spawns.js emits egg_worm — or egg_purple on a Hamis roll — at fixed
+//      mountain_tree spots, and live probing confirmed all three seed-1 eggs spawn
+//      at/near the predicted coords), but this capture method can't reliably
+//      observe them: the eggs hatch if enemies engage (hp 0.6), stream out when
+//      chunks unload behind the camera sweep, and physics-settle up to ~9 px from
+//      the spawn pixel. Un-scorable ground truth, so BOTH sides are excluded —
+//      this regex drops the game side; isTelescopeSurfaceEgg (below) drops
+//      telescope's predictions symmetrically.
 export const UNMODELED_ITEM_NAME_RE = /^essence_|^spell_refresh|^musicstone$|^greed_curse$|^egg_worm$/;
 
 // Holy-Mountain temple full-HP hearts render in telescope as map PIXELS (part of
@@ -129,6 +134,20 @@ export function isTelescopeLatentSpell(row) {
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
     'chaos_die', 'greed_die', 'paha_silma', 'treasure', 'portal',
 ]);
+
+// Telescope's "Three eggs" surface critter-egg predictions (static_spawns.js,
+// biome mountain_tree; egg_worm, or egg_purple on a Hamis roll) — the mirror of
+// the game-side ^egg_worm$ drop in UNMODELED_ITEM_NAME_RE above. The placements
+// are real (live-probed at/near the predicted coords) but a passive camera sweep
+// can't reliably capture them: combat hatching (hp 0.6), chunk-unload streaming,
+// up-to-~9-px physics settle. Without this they are permanent false `item`
+// extras. Scoped to biome mountain_tree so ITEM-SPAWNLIST eggs (egg_purple /
+// egg_slime / egg_monster from potion_generation.js) keep scoring — those DO
+// match game rows at exact positions.
+export const TELESCOPE_SURFACE_EGG_DETAILS = new Set(['egg_worm', 'egg_purple']);
+export function isTelescopeSurfaceEgg(rec) {
+    return TELESCOPE_SURFACE_EGG_DETAILS.has(rec.detail) && rec.biome === 'mountain_tree';
+}
 
 // ── Pixel-scene placement exceptions (scripts/compare_scenes.mjs) ────────────
 //

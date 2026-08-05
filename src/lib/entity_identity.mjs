@@ -24,7 +24,7 @@
 import {
     BOSS_REWARDS_RE, UNMODELED_ITEM_DIR_RE, UNMODELED_ITEM_NAME_RE, HM_TEMPLE_HEART_RE,
     TELESCOPE_UNMODELED_DETAILS, CONTAINER_ORIGINS, SHOP_ORIGINS, isContainerContent,
-    gameRowExcludedByLua, TELESCOPE_BOSS_DROP_WAND_POS,
+    gameRowExcludedByLua, TELESCOPE_BOSS_DROP_WAND_POS, isTelescopeSurfaceEgg,
 } from './exceptions.mjs';
 
 // Re-export the ignore-layer surface so existing importers (verify_entities.mjs,
@@ -284,6 +284,11 @@ export function canonTelescope(rec, isNGP = false) {
     // so they're excluded rather than counted as false `item` extras. The set and
     // its per-detail rationale live in exceptions.TELESCOPE_UNMODELED_DETAILS.
     if (kind === 'item' && TELESCOPE_UNMODELED_DETAILS.has(rec.detail)) kind = 'unmodeled';
+    // The surface "Three eggs" (static_spawns.js): modeled by telescope but not
+    // reliably observable by the camera sweep — mirror of the game-side
+    // ^egg_worm$ drop. See exceptions.isTelescopeSurfaceEgg (scoped to biome
+    // mountain_tree so spawnlist eggs keep scoring).
+    if (kind === 'item' && isTelescopeSurfaceEgg(rec)) kind = 'unmodeled';
     let x = rec.x, y = rec.y;
     if (rec.detail === 'gourd') ({ x, y } = snapGourd(x, y));
     if (kind === 'wand' && rec.biome === GOOD_WAND_BIOME) {

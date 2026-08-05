@@ -250,6 +250,17 @@ export function canonGame(rec, isNGP = false) {
     };
 }
 
+// Telescope item-name → game entity-name aliases, applied to the canonical
+// `detail` so the two sides agree when positions line up. Same idea as the
+// lootKind aliases in verify_entities.mjs (kammi/pouch/ukkoskivi), but at the
+// per-placement detail level.
+//  - runestone_magma : telescope's name for the lava runestone; no such entity
+//      exists in the game build — the real variant set is runestone_{laser,
+//      fireball,lava,slow,null,disc,metal} (runestone_lava.xml).
+const TELESCOPE_DETAIL_ALIAS = {
+    runestone_magma: 'runestone_lava',
+};
+
 export function canonTelescope(rec, isNGP = false) {
     let kind = TELESCOPE_CATEGORY_TO_KIND[rec.category] || rec.category || 'other';
     // Spell predictions (shop stock, utility-box / chest / boss / puzzle / eye-room
@@ -304,8 +315,9 @@ export function canonTelescope(rec, isNGP = false) {
         if (TELESCOPE_BOSS_DROP_WAND_POS.has(`${Math.round(x - off)},${Math.round(y)}`)) kind = 'unmodeled';
     }
     const { cx, cy } = chunkOf(x, y);
+    const detail = TELESCOPE_DETAIL_ALIAS[rec.detail] ?? rec.detail ?? null;
     return {
-        source: 'telescope', kind, detail: rec.detail ?? null,
+        source: 'telescope', kind, detail,
         x, y, cx, cy,
         pw: pwIndexOf(x, isNGP), pwv: pwVerticalOf(y),
         covered: true, raw: rec,

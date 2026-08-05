@@ -18,7 +18,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHUNK, canonGame, canonTelescope, TELESCOPE_KINDS, isContainerContent } from './lib/entity_identity.mjs';
-import { isTelescopeLatentSpell } from './lib/exceptions.mjs';
+import { isTelescopeLatentSpell, gameRowExcludedByLua } from './lib/exceptions.mjs';
 import { setupTelescope, generateForPW } from './lib/telescope_entities.mjs';
 
 function parseArgs(argv) {
@@ -252,7 +252,10 @@ async function main() {
         // content, not in the exact-position diff (they upwarp/teleport).
         // (spell cards carry chest_eid too but are scored by placement, not as
         // chest loot — exclude them here so lootKind doesn't mis-bucket e.g. BOMB.)
-        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && r.kind !== 'spell' && anchorInMask(r.raw.chest_x, r.raw.chest_y));
+        // The lua-stack exclusions apply here too: pacifist Workshop chests spawn
+        // (and get force-opened) on SOME sweeps, so their loot must drop with the
+        // placement or it scores as a phantom miss on those captures.
+        const gameChestContent = gameCanon.filter((r) => r.raw.chest_eid != null && r.kind !== 'spell' && !gameRowExcludedByLua(r.raw) && anchorInMask(r.raw.chest_x, r.raw.chest_y));
         // Spell cards (kind 'spell') are scored by placement, not the exact diff —
         // see scoreSpells. Include both directly-placed and container-dispensed
         // cards (telescope emits dispense spells at slot positions, not as
@@ -270,7 +273,9 @@ async function main() {
         const teleAll = teleCanonAll.filter((r) => TELESCOPE_KINDS.has(r.kind) && inMask(mask, r));
         const tele = teleAll.filter((r) => !isContainerContent(r));
         const contentExcluded = teleAll.length - tele.length;
-        const teleChestContent = teleCanonAll.filter((r) => r.raw.parentX != null && r.kind !== 'spell' && anchorInMask(r.raw.parentX, r.raw.parentY));
+        // Pacifist-chest contents are excluded here like their placement is in
+        // isContainerContent (player-conditional; the passive sweep never spawns it).
+        const teleChestContent = teleCanonAll.filter((r) => r.raw.parentX != null && r.kind !== 'spell' && r.raw.origin !== 'pacifist_chest' && anchorInMask(r.raw.parentX, r.raw.parentY));
         // Telescope spell predictions (kind 'spell'), in-mask — scored by placement.
         // Drop event-triggered latent-loot extras (boss-victory drops + solved-tablet
         // puzzle cards) the same way the game side drops its lua-stack exclusions:

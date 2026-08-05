@@ -127,6 +127,10 @@ export function isTelescopeLatentSpell(row) {
 //      pixel_scene, never as a dumped item.
 //  - portal     : the rainforest portal — never dumped as an item entity either
 //      (confirmed by the maintainer).
+//  - buried_eye_teleporter : the dormant liquid-activated teleporter BUILDING of
+//      the snowcave buried-eye secret (teleport_snowcave_buried_eye.xml) —
+//      live-verified present at the predicted coords, but it has no
+//      ItemComponent so the item/mob capture never dumps it.
 // Scene-vs-placement for the pixel_scene ones is validated by the scene axis
 // (src/compare_scenes.mjs), not the entity diff.
 // (chaos_die/greed_die used to be here on the claim that no die appears in any
@@ -134,7 +138,7 @@ export function isTelescopeLatentSpell(row) {
 // landing exactly on telescope's predictions. They now score via
 // TELESCOPE_DETAIL_ALIAS in entity_identity.mjs instead.)
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
-    'paha_silma', 'treasure', 'portal',
+    'paha_silma', 'treasure', 'portal', 'buried_eye_teleporter',
 ]);
 
 // Telescope's "Three eggs" surface critter-egg predictions (static_spawns.js,

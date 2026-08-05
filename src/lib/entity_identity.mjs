@@ -257,8 +257,13 @@ export function canonGame(rec, isNGP = false) {
 //  - runestone_magma : telescope's name for the lava runestone; no such entity
 //      exists in the game build — the real variant set is runestone_{laser,
 //      fireball,lava,slow,null,disc,metal} (runestone_lava.xml).
+//  - chaos_die / greed_die : the game's entity files are physics_die.xml /
+//      physics_greed_die.xml, so dumped rows carry those basenames (proven by
+//      full_24: two physics_die rows exactly at telescope's chaos_die coords).
 const TELESCOPE_DETAIL_ALIAS = {
     runestone_magma: 'runestone_lava',
+    chaos_die: 'physics_die',
+    greed_die: 'physics_greed_die',
 };
 
 export function canonTelescope(rec, isNGP = false) {

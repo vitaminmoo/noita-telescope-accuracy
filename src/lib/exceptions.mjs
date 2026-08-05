@@ -121,8 +121,6 @@ export function isTelescopeLatentSpell(row) {
 // Telescope item `detail`s that are real worldgen entities the camera sweep never
 // dumps as items, so telescope's copy can never match — bucket as `unmodeled`
 // (not a scored kind) instead of counting a false `item` extra:
-//  - chaos_die / greed_die : potion_spawnlist physics pickups (generateItem ~1/91);
-//      no die file appears in ANY fixture dump.
 //  - paha_silma : the unique snowy_ruins eye pillar — the game emits it ONLY as a
 //      pixel_scene (overworld/snowy_ruins_eye_pillar.png), never as a dumped item.
 //  - treasure   : the greed/sin treasure — emitted ONLY as a greed_treasure.png
@@ -131,8 +129,12 @@ export function isTelescopeLatentSpell(row) {
 //      (confirmed by the maintainer).
 // Scene-vs-placement for the pixel_scene ones is validated by the scene axis
 // (src/compare_scenes.mjs), not the entity diff.
+// (chaos_die/greed_die used to be here on the claim that no die appears in any
+// fixture dump; full_24 disproved it — the game dumps them as physics_die.xml,
+// landing exactly on telescope's predictions. They now score via
+// TELESCOPE_DETAIL_ALIAS in entity_identity.mjs instead.)
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
-    'chaos_die', 'greed_die', 'paha_silma', 'treasure', 'portal',
+    'paha_silma', 'treasure', 'portal',
 ]);
 
 // Telescope's "Three eggs" surface critter-egg predictions (static_spawns.js,

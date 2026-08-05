@@ -53,12 +53,13 @@ export const getBiomeAtWorldCoordinates = utils.getBiomeAtWorldCoordinates;
 // canvas stubs before calling this, so these (which allocate canvases at eval)
 // must NOT be eager-loaded above.
 export async function loadGeneration() {
-    const [tile, pscene, poi, statics, settings] = await Promise.all([
+    const [tile, pscene, poi, statics, settings, unlocks] = await Promise.all([
         mod('tile_generator.js'),
         mod('pixel_scene_generation.js'),
         mod('poi_scanner.js'),
         mod('static_spawns.js'),
         mod('settings.js'),
+        mod('unlocks.js'),
     ]);
     return {
         generateBiomeTiles: tile.generateBiomeTiles,
@@ -68,6 +69,11 @@ export async function loadGeneration() {
         getSpecialPoIs: poi.getSpecialPoIs,
         addStaticPixelScenes: statics.addStaticPixelScenes,
         updateSettings: settings.updateSettings,
+        // Unlock model (js/unlocks.js): unlockedSpells gates die spawns
+        // (potion-pedestal roll 71, chest/utility-box chaos-die options) and
+        // every spell-pool pick (shop items, random cards, wand spells).
+        setUnlocks: unlocks.setUnlocks,
+        UNLOCKABLES: unlocks.UNLOCKABLES,
         // Scene-placement tables (telescope's static + biome-color scenes), for
         // the pixel-scene placement comparison. prng-rolled splice scenes are not
         // in telescope's scene output.

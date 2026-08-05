@@ -46,9 +46,21 @@ export async function setupTelescope({
     const {
         generateBiomeTiles, loadPixelSceneData,
         prescanSpawnFunctions, scanSpawnFunctions, getSpecialPoIs,
-        addStaticPixelScenes, updateSettings,
+        addStaticPixelScenes, updateSettings, setUnlocks, UNLOCKABLES,
     } = await loadGeneration();
     updateSettings({ showEnemies });
+    // Pin the unlock model to FULLY UNLOCKED — the harness standard (ground-
+    // truth captures set every card_unlocked_* persistent flag, see
+    // noita-map's internal/prebake.CaptureAllUnlocks and the producer's
+    // -all-unlocks pass-through). This is technically the current default:
+    // js/unlocks.js initializes unlockedSpells all-true and the only headless
+    // setUnlocks call sites are commented out (spell_generator.js) or app-UI
+    // only (app.js setUnlocks([]) at init). Pinning it here makes the export
+    // deterministic even if telescope later adds an init-time lockdown.
+    // Affects: chaos/greed die on potion pedestals (unlockedSpells[363]),
+    // chest & utility-box die options, and locked-spell rerolls in
+    // spell_generator.js (shop items, random cards, wand spells).
+    setUnlocks(Object.keys(UNLOCKABLES));
 
     const origLog = console.log, origWarn = console.warn;
     if (quiet) { console.log = () => {}; console.warn = () => {}; }

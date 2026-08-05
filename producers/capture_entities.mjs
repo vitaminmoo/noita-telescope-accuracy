@@ -29,6 +29,8 @@
 //   --noita-map=DIR     sibling repo with cmd/sweep   (NOITA_MAP_DIR, default ~/reverse/noita/noita-map)
 //   --host=HOST:PORT    noitad address (HOST, default 127.0.0.1:8080)
 //   --headless          pass -headless to sweep (faster; subsystem NOPs)
+//   --no-all-unlocks    don't pin persistent unlock flags (default: pin the
+//                       fully-unlocked capture set via sweep -all-unlocks)
 //   --dry-run           print the sweep commands without running them
 
 import { spawn } from 'node:child_process';
@@ -64,6 +66,22 @@ function parseArgs(argv) {
         // tiles, load up to 1.77s, got cut off → 98.9%). The cap is just a
         // backstop — keep it generous, it costs nothing on fast-settling tiles.
         quietFrames: 20, maxSettleMs: 3000,
+        // Standardized unlock state: pin the shared save's persistent flags to
+        // the canonical fully-unlocked set before worldgen (every
+        // card_unlocked_* spell unlock; stray unlock-namespace flags
+        // removed). Source of truth for the list: noita-map's
+        // internal/prebake.CaptureAllUnlocks (harvested from
+        // data/scripts/gun/gun_actions.lua spawn_requires_flag entries).
+        // Without this, captures inherit whatever flags earlier runs left in
+        // the shared Wine save00 — which is exactly how full_i /
+        // full_786433191 (pre-2026-06-30, card_unlocked_duplicate unset, no
+        // dies) drifted from full_24 (post, dies present). Matches the
+        // telescope side, which exports fully-unlocked (setUnlocks(all) in
+        // src/lib/telescope_entities.mjs). Requires a noitad built from
+        // noita-map >= the shared-save ApplyFlags fix; older daemons reject
+        // the flags with HTTP 400 (fail-loud beats silent drift).
+        // --no-all-unlocks opts out for drift experiments.
+        allUnlocks: true,
         // Freeze simulation during capture: worldgen spawns are unaffected, but
         // AI wandering, physics/verlet settling, explosions (bombs from force-
         // opened chests, shattering potions), fire effects and the pixel sim all
@@ -86,6 +104,7 @@ function parseArgs(argv) {
         else if (a === '--headless') o.headless = true;
         else if (a === '--force-open') o.forceOpen = true;
         else if (a === '--no-force-open') o.forceOpen = false;
+        else if (a === '--no-all-unlocks') o.allUnlocks = false;
         else if (a === '--no-filter-noise') o.filterNoise = false;
         else if (a === '--fog-reveal') o.fogReveal = true;
         else if (a === '--no-freeze') o.disableSubs = '';
@@ -137,6 +156,7 @@ function runSweep(opts, region, bbox, outDir) {
     if (opts.disableSubs) args.push('-disable-subsystems', opts.disableSubs);
     if (opts.headless) args.push('-headless');
     if (opts.forceOpen) args.push('-force-open-chests');
+    if (opts.allUnlocks) args.push('-all-unlocks');
     if (opts.filterNoise) args.push('-filter-noise');
     if (opts.fogReveal) args.push('-fog-reveal');
 

@@ -132,12 +132,12 @@ function emitPoi(poi, rows, originOverride) {
         case 'utility_box':
             // A utility box is a container, like a chest: the game places the
             // utility_box.xml entity at worldgen but doesn't spawn its dispensed
-            // items until it's shot open, and the camera sweep never opens it. So
-            // emit the box itself as the scorable placement (item · utility_box)
-            // and tag its contents with origin 'utility_box' so they're excluded
-            // as unobservable container-content (see isContainerContent).
+            // items until it's shot open. The box itself is the scorable placement
+            // (item · utility_box); its contents are anchored to the box (parentX/
+            // parentY) so they score by parent as chest content when the sweep
+            // force-opens the box (excluded from the exact diff by isContainerContent).
             rows.push({ category: 'item', x: poi.x, y: poi.y, biome: baseBiome, origin: 'utility_box', detail: 'utility_box' });
-            for (const it of poi.items || []) emitInner(it, rows, 'utility_box', baseBiome, poi.x, poi.y);
+            for (const it of poi.items || []) emitInner(it, rows, 'utility_box', baseBiome, poi.x, poi.y, { x: poi.x, y: poi.y });
             return;
         case 'item':
             emitInner(poi, rows, origin, baseBiome, poi.x, poi.y);

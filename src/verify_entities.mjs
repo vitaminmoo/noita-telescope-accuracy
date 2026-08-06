@@ -102,7 +102,7 @@ function lootKind(s0) {
     if (/goldnugget|bloodmoney|^gold$|moneyamount/.test(s)) return 'gold';
     if (/potion/.test(s)) return 'potion';
     if (/powder_stash|powder|pouch/.test(s)) return 'powder_stash'; // telescope emits 'pouch'
-    if (/heart/.test(s)) return 'heart';
+    if (/heart|full_heal/.test(s)) return 'heart'; // telescope emits 'full_heal' for heart_fullhp
     if (/runestone/.test(s)) return 'runestone';
     if (/die/.test(s)) return 'die';
     if (/bomb/.test(s)) return 'bomb';
@@ -111,7 +111,7 @@ function lootKind(s0) {
     if (/brimstone|kiuaskivi|saunastone|firestone/.test(s)) return 'brimstone'; // game file=brimstone, display/telescope name=Kiuaskivi — same item
     if (/thunderstone|ukkoskivi/.test(s)) return 'thunderstone'; // game file=thunderstone, telescope item=ukkoskivi
     if (/safe_haven|kammi/.test(s)) return 'safe_haven'; // telescope emits 'kammi'
-    if (/evil_eye/.test(s)) return 'evil_eye';
+    if (/evil_eye|paha_silma/.test(s)) return 'evil_eye'; // telescope emits 'paha_silma'
     if (/random_card|spell_/.test(s)) return 'card';
     if (/^chest|mimic/.test(s)) return null; // nested chest / mimic — skip
     return null; // unknown / non-loot → ignore rather than invent a kind

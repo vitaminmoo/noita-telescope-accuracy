@@ -123,7 +123,7 @@ function lootKind(s0) {
 // loot kinds. Only meaningful on a force-open dump (otherwise the game side is
 // near-empty). Returns { matched, missing, extra, chestsPaired, chestsGameOnly,
 // chestsTeleOnly, sampleMiss, sampleExtra }.
-function scoreChestContents(gameContent, teleContent, anchorTol = 24) {
+function scoreChestContents(gameContent, teleContent, chestOpens = [], anchorTol = 24) {
     const groupBy = (rows, ax, ay, src) => {
         const m = new Map();
         for (const r of rows) {
@@ -139,6 +139,22 @@ function scoreChestContents(gameContent, teleContent, anchorTol = 24) {
     };
     const G = groupBy(gameContent, 'chest_x', 'chest_y');
     const T = groupBy(teleContent, 'parentX', 'parentY');
+
+    // Seed a group for every container the sweep actually force-opened, even
+    // when it dispensed nothing. Without these markers, "opened and dispensed
+    // nothing" and "the sweep never reached this chest" look identical, and
+    // telescope's prediction for the chest scores as an unpairable extra.
+    //
+    // One reward roll (~3% of chests) converts the chest itself into gold
+    // pixels instead of creating an entity — the hook records that as
+    // converted_to, which IS the chest's contents.
+    for (const o of chestOpens) {
+        if (o.x == null || o.y == null) continue;
+        const k = `${Math.round(o.x)},${Math.round(o.y)}`;
+        if (!G.has(k)) G.set(k, { x: o.x, y: o.y, kinds: new Set() });
+        const lk = o.converted_to ? lootKind(o.converted_to) : null;
+        if (lk) G.get(k).kinds.add(lk);
+    }
 
     let matched = 0, missing = 0, extra = 0, chestsPaired = 0;
     const sampleMiss = [], sampleExtra = [];
@@ -297,7 +313,16 @@ async function main() {
 
         // Chest content (loot KIND, by parent chest). Only contributes when the
         // dump was captured with -force-open-chests (else gameChestContent ~= 0).
-        const cc = scoreChestContents(gameChestContent, teleChestContent);
+        // chest_open markers (one per force-opened container). Filtered like
+        // the reward rows above: in-mask by the container's own anchor, and
+        // leggy mimics dropped since telescope models their placement but not
+        // their contents. Absent on dumps captured before the marker existed,
+        // in which case scoring is unchanged.
+        const chestOpens = readNdjson(join(regionDir, 'chest_opens.ndjson'))
+            .filter((o) => anchorInMask(o.x, o.y)
+                && !leggyAnchors.has(`${Math.round(o.x)},${Math.round(o.y)}`));
+
+        const cc = scoreChestContents(gameChestContent, teleChestContent, chestOpens);
         tally(acc, 'chest_content', 'matched', cc.matched);
         tally(acc, 'chest_content', 'missing', cc.missing);
         tally(acc, 'chest_content', 'extra', cc.extra);

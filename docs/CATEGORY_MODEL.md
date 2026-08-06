@@ -39,6 +39,7 @@ Three NDJSON files per region, one row per observed entity:
 | `pixel_scenes.ndjson` | `pixel_scene` | a placed pixel scene (PNG / biome_impl) |
 | `items.ndjson` | `item` | a pickup/item entity |
 | `mobs.ndjson` | `mob` | an animal/enemy entity |
+| `chest_opens.ndjson` | `chest_open` | a container the sweep force-opened |
 
 Each row: `{ x, y, cx, cy, category, file, frame, entity_id, native_stack }`,
 plus `{ chest_x, chest_y, chest_eid }` on reward rows when the dump was captured
@@ -46,6 +47,15 @@ with force-open-chests. `file` is the XML path it spawned from (e.g.
 `data/entities/items/pickup/heart.xml`) — the game's identity is its **file**.
 `cx,cy = floor(coord/512)` is the chunk grid the coverage mask uses.
 `tile_done.ndjson` records which chunks the sweep actually generated (the mask).
+
+`chest_opens.ndjson` is one marker per container the sweep opened, carrying
+`open_status` (1 clean, 2 aborted partway) and `converted_to` when the chest
+turned *itself* into a material. It exists because a chest can open and create
+nothing: ~7% of chests dispense a bomb and ~3% convert themselves to gold
+pixels. Without the marker those are indistinguishable from a chest the sweep
+never reached, and telescope's prediction for them scores as an unpairable
+extra. Dumps captured before the marker existed simply have no such file and
+score exactly as they did before.
 
 ### Telescope prediction (`emitPoi` rows)
 Telescope emits semantic rows `{ category, x, y, biome, origin, detail?, subtype?,

@@ -27,7 +27,7 @@
 //   --types=LIST        pixel_scene,item,mob subset (default all three)
 //   --out=DIR           fixture-set root (default data/dumps/entities/<seed>_ng<ng>)
 //   --noita-map=DIR     sibling repo with cmd/sweep   (NOITA_MAP_DIR, default ~/reverse/noita/noita-map)
-//   --host=HOST:PORT    noitad address (HOST, default 127.0.0.1:8080)
+//   --host=HOST:PORT    noitad address (HOST, default 127.0.0.1:8088)
 //   --headless          pass -headless to sweep (faster; subsystem NOPs)
 //   --no-all-unlocks    don't pin persistent unlock flags (default: pin the
 //                       fully-unlocked capture set via sweep -all-unlocks)
@@ -51,7 +51,7 @@ function parseArgs(argv) {
         seed: null, ng: 0, regions: 'main', quick: false, tile: 1024,
         types: 'pixel_scene,item,mob', out: null,
         noitaMap: process.env.NOITA_MAP_DIR || join(homedir(), 'reverse/noita/noita-map'),
-        host: process.env.HOST || '127.0.0.1:8080',
+        host: process.env.HOST || '127.0.0.1:8088',
         // Canonical-dump defaults. forceOpen: RNG-safe, makes chest loot
         // observable (--no-force-open opts out). filterNoise: drop sim-noise
         // categories the harness already ignores (--no-filter-noise opts out).

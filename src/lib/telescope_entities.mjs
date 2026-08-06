@@ -39,7 +39,7 @@ import { GENERATOR_CONFIG, loadPNG, loadGeneration } from './telescope.mjs';
 // Build the PW-independent generation context once.
 export async function setupTelescope({
     seed, ng = 0, gameMode = 'normal',
-    biomeMap = 'data/biome_maps/biome_map.png', showEnemies = false, quiet = true,
+    biomeMap = null, showEnemies = false, quiet = true,
 } = {}) {
     // loadGeneration() pulls the heavy canvas-touching generators on demand —
     // after the canvas stubs above are installed. loadPNG comes from the bridge.

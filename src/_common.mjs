@@ -14,11 +14,23 @@ import { loadPNG, generateBiomeData, BIOME_CONFIG, GENERATOR_CONFIG } from './li
 // through generateBiomeData to produce {pixels, heaven, hell} the way
 // js/utils.js::getBiomeAtWorldCoordinates expects.
 export async function loadBiomeData(path, { seed = 0, ng = 0, gameMode = 'normal' } = {}) {
+    // The base map must match the run's dimensions: generateBiomeData reads the
+    // pixel buffer row-major at the width given here, so feeding the 70-wide
+    // NG0 map to a 64-wide NG+ run shears every row by 6px. Pick the map from
+    // the mode unless the caller passed one explicitly.
+    const isAlt = ng > 0 || gameMode === 'nightmare';
+    if (!path) {
+        path = gameMode === 'nightmare' ? 'data/biome_maps/biome_map_nightmare.png'
+            : ng > 0 ? 'data/biome_maps/biome_map_newgame_plus.png'
+                : 'data/biome_maps/biome_map.png';
+    }
     // png_sanitizer resolves URLs relative to its own file (js/), so prepend ../.
     const base = await loadPNG('../' + path);
-    const isAlt = ng > 0 || gameMode === 'nightmare';
     const w = isAlt ? BIOME_CONFIG.W_NGP : BIOME_CONFIG.W_NG0;
     const h = isAlt ? BIOME_CONFIG.H_NGP : BIOME_CONFIG.H_NG0;
+    if (base.width && base.width !== w) {
+        throw new Error(`biome map ${path} is ${base.width}px wide, expected ${w} for ng=${ng} gameMode=${gameMode}`);
+    }
     const data = generateBiomeData(seed, ng, gameMode, base.data, w, h);
     data.width = w;
     data.height = h;

@@ -22,7 +22,7 @@ import { isTelescopeLatentSpell, gameRowExcludedByLua } from './lib/exceptions.m
 import { setupTelescope, generateForPW } from './lib/telescope_entities.mjs';
 
 function parseArgs(argv) {
-    const o = { set: null, dump: 0, kind: null, showEnemies: false, json: false, biomeMap: 'data/biome_maps/biome_map.png' };
+    const o = { set: null, dump: 0, kind: null, showEnemies: false, json: false, biomeMap: null };
     for (const a of argv) {
         if (a.startsWith('--set=')) o.set = a.slice(6);
         else if (a.startsWith('--dump=')) o.dump = +a.slice(7);

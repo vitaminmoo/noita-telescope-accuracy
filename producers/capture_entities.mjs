@@ -24,7 +24,9 @@
 //   --regions=LIST      comma list: main | pw+N | pw-N | heaven | hell  (default main)
 //   --quick             small box near spawn instead of the full region (good for testing)
 //   --tile=N            sweep tile size 512..8192 (default 1024; smaller = thorough+slower)
-//   --types=LIST        pixel_scene,item,mob subset (default all three)
+//   --types=LIST        subset of pixel_scene,item,mob,chest_open (default all
+//                       four; keep chest_open — it carries the force-open
+//                       markers that pair empty/bomb/gold chests, see below)
 //   --out=DIR           fixture-set root (default data/dumps/entities/<seed>_ng<ng>)
 //   --noita-map=DIR     sibling repo with cmd/sweep   (NOITA_MAP_DIR, default ~/reverse/noita/noita-map)
 //   --host=HOST:PORT    noitad address (HOST, default 127.0.0.1:8088)
@@ -49,7 +51,16 @@ const QUICK_MAIN = { x: -1536, y: -512, w: 4096, h: 5120 };
 function parseArgs(argv) {
     const o = {
         seed: null, ng: 0, regions: 'main', quick: false, tile: 1024,
-        types: 'pixel_scene,item,mob', out: null,
+        // MUST include chest_open: with forceOpen on (the default), the sweep
+        // emits a `chest_open` marker per force-opened container so an
+        // opened-but-empty chest (7% bomb / 3% convert-to-gold — nothing an
+        // entity hook can see) PAIRS in scoreChestContents instead of scoring
+        // as an unpairable extra. cmd/sweep's own -types default is all four
+        // categories; this list is passed explicitly and overrides it, so
+        // dropping chest_open here silently loses the markers (fixtures then
+        // show phantom bomb/gold chest_content extras). See fixtures/README and
+        // the sweep_chest_capture_gaps note.
+        types: 'pixel_scene,item,mob,chest_open', out: null,
         noitaMap: process.env.NOITA_MAP_DIR || join(homedir(), 'reverse/noita/noita-map'),
         host: process.env.HOST || '127.0.0.1:8088',
         // Canonical-dump defaults. forceOpen: RNG-safe, makes chest loot

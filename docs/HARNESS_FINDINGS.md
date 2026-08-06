@@ -316,7 +316,13 @@ chest scorer ignores), enemies 98.6%. Adding explosions specifically took potion
 96.9→100% and wand 98.4→99.2%. `cellsim` IS applied (verified: GridWorld_Step-
 Simulation @0x00718d50, hook line ~2927) — the small visible material settle is
 the one-time deterministic chunk-gen settle, not ongoing sim, and doesn't move
-scored entities. TUNED (2026-06-04): re-found the timing now that sim is frozen. Add `verlet`
+scored entities. UPDATE (2026-08-06): `cellsim` (StepSimulation) only dampens the
+threaded cell dispatch; a dedicated `material` alias — NOP of
+`MaterialReaction_SimulateGravityAndSpread` @0x00709fc0, sweep-safe (no chunk-stream
+impact) — was added and is now in the capture_entities freeze list to actually stop
+material gravity/spread. Do not use `GRIDFREEZE` in a sweep (it stops streaming).
+See docs/RUNBOOK.md §5 for the current, authoritative freeze/`--types` guidance.
+TUNED (2026-06-04): re-found the timing now that sim is frozen. Add `verlet`
 (Lukki legs) + `game_effects` (fire) to the freeze set; quiet-detection then wins
 at p50~740ms / p90~1430ms, so `-quiet-frames 20 -max-settle-ms 3000` gives 100%
 run-to-run stability on a 36-tile multi-biome slice (every kind, two runs byte-

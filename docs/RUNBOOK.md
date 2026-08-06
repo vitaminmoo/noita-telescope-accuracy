@@ -112,23 +112,63 @@ on and you can watch the window pan through the world. Passing `--headless`
 turns rendering off (faster, for unattended runs); `--no-freeze` disables the
 subsystem freeze entirely.
 
-> The pixel sim (sand/water/lava) is only **partially** stilled during a sweep,
-> not fully paused: a sweep must keep `GridWorld_MainUpdate` running to stream
-> chunks, and the threaded "Falling Everything" cell dispatch lives inside it —
-> `cellsim`/`material` in the freeze list only damp it. That's fine for the
-> entity fixtures (they match on entity spawns, not cells), and the producer's
-> `--quiet-frames`/`--max-settle` settle absorbs the residual churn. The full
-> pixel-world pause (`GRIDFREEZE`, see noita-puppeteer `inject/PROTOCOL.md`)
-> stops streaming, so it **cannot** be used during a camera-panning sweep — it's
-> only for static "pause and look" inspection, never for a re-dump.
+> **Pixel-sim (sand/water/lava) during a sweep — two different freeze knobs, do
+> not confuse them:**
+> - `cellsim` NOPs `GridWorld_StepSimulation` (the single-threaded entry). The
+>   threaded "Falling Everything" cell dispatch bypasses it, so `cellsim` **alone
+>   barely dampens** liquid motion. This is the origin of the old "material
+>   doesn't freeze" lore.
+> - `material` NOPs `MaterialReaction_SimulateGravityAndSpread` (@`0x00709fc0`) —
+>   the material gravity + spread body itself, so it stops cell motion
+>   **regardless of caller**, and it does **not** touch chunk streaming, so it is
+>   **sweep-safe**. This is the "fixed materials pause" — the producer's freeze
+>   list includes it, and you can confirm it took by grepping the worker's
+>   `noita_hook.log` for `subsys MaterialReaction_SimulateGravityAndSpread NOP'd`.
+>   (Not byte-verified frozen *mid-sweep* — MATDUMP/MATSIM drive the same grid
+>   gate and can't run during a sweep — but it is the correct, targeted stop.)
+>
+> Either way the entity fixtures match on entity **spawns**, not cells, and the
+> producer's `--quiet-frames`/`--max-settle` settle absorbs residual churn.
+>
+> Do **not** reach for `GRIDFREEZE` (noita-puppeteer `inject/`, the only *proven*
+> total pixel-sim pause): it halts `GridWorld_MainUpdate`, which also stops chunk
+> streaming, so it **cannot** be used during a camera-panning sweep — it is
+> static "pause and look" inspection only, never a re-dump.
 
 Other flags: `--host=127.0.0.1:8088` (default; matches noitad),
 `--tile=N` (smaller = thorough+slower), `--ng=N` for NG+, `--all-unlocks`
 (on by default; pins the canonical fully-unlocked flag set), `--dry-run` prints
 the sweep bboxes without running. Force-open-chests is on by default
 (`--no-force-open` opts out). Output:
-`data/dumps/entities/<seed>_ng<ng>/<region>/{tile_done,items,mobs,pixel_scenes}.ndjson`
+`data/dumps/entities/<seed>_ng<ng>/<region>/{tile_done,items,mobs,pixel_scenes,chest_opens}.ndjson`
 + `set.json`. Full-main-world sweeps take ~15–20 min per region.
+
+> **`chest_open` MUST stay in `--types` (it is, by default — do not drop it).**
+> With force-open on, the sweep emits one `chest_open` marker per force-opened
+> container into `chest_opens.ndjson`, recording `open_status` +
+> `converted_to`. This is what lets a chest that opened but dispensed **nothing
+> an entity hook can see** — ~7% roll `bomb_small` (under `entities/projectiles/`,
+> dropped by the noise filter) and ~3% `EntityConvertToMaterial(chest,"gold")`
+> (turns to gold *pixels*, no entity) — **pair** in `scoreChestContents` instead
+> of scoring as an unpairable extra. `cmd/sweep`'s own `-types` default is all
+> four categories, but the producer passes `--types` explicitly and thus
+> overrides it, so its default list here **must** include `chest_open`. A fixture
+> with no `chest_opens.ndjson` will show phantom bomb/gold `chest_content`
+> extras — if you see that, you captured with a stale/narrowed `--types`.
+> (The committed `full_24`/`full_786433191`/`full_i` fixtures all carry it.)
+>
+> **If `chest_opens.ndjson` exists but is EMPTY (0 lines) while `items.ndjson`
+> has `chest_eid` rewards: stale hook DLL, not a `--types` problem.** The
+> `chest_open` marker is emitted by `noita-puppeteer`'s hook; an
+> `inject/noita_hook.dll` built before commit `1b98017` opens chests and
+> dispenses loot but never emits the marker. Confirm with `strings
+> ~/repos/noita-puppeteer/inject/noita_hook.dll | grep 'category":"chest_open'`
+> (empty ⇒ stale). Fix: `make -C ~/repos/noita-puppeteer/inject`, then recapture
+> — noitad copies the DLL into each worker at spawn, so **no noitad restart is
+> needed**, just a fresh sweep. (Diagnostic ladder: worker `noita_hook.log` shows
+> `force-open: opened chest` > 0 → force-open works; capture log
+> `grep '"category":"chest_open"'` == 0 → markers never reached the sweep → the
+> DLL lacks the emit code.)
 
 ---
 

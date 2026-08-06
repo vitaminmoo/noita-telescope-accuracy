@@ -131,6 +131,10 @@ export function isTelescopeLatentSpell(row) {
 //      the snowcave buried-eye secret (teleport_snowcave_buried_eye.xml) —
 //      live-verified present at the predicted coords, but it has no
 //      ItemComponent so the item/mob capture never dumps it.
+//  - music_machine : spawn_music_machine loads a PROP
+//      (data/entities/props/music_machines/music_machine_NN.xml), so the
+//      item/mob capture never dumps it. Only surfaces on NG+ fixtures, where
+//      the shuffled biome map puts spawn_music_machine pixels in the band.
 // Scene-vs-placement for the pixel_scene ones is validated by the scene axis
 // (src/compare_scenes.mjs), not the entity diff.
 // (chaos_die/greed_die used to be here on the claim that no die appears in any
@@ -139,6 +143,7 @@ export function isTelescopeLatentSpell(row) {
 // TELESCOPE_DETAIL_ALIAS in entity_identity.mjs instead.)
 export const TELESCOPE_UNMODELED_DETAILS = new Set([
     'paha_silma', 'treasure', 'portal', 'buried_eye_teleporter',
+    'music_machine',
 ]);
 
 // Telescope's "Three eggs" surface critter-egg predictions (static_spawns.js,

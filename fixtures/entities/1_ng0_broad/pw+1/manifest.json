@@ -9,6 +9,7 @@
   "types": [
     "pixel_scene",
     "item",
-    "mob"
+    "mob",
+    "chest_open"
   ]
 }

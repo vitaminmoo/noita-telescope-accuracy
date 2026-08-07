@@ -105,27 +105,29 @@ node producers/capture_entities.mjs --seed=1 --regions=main,pw+1,pw-1 \
 
 **Physics off, rendering ON — the default, and what you want here.** The
 producer spawns each worker with a built-in `disableSubs` freeze list
-(velocity, ai, character, box2d, joints, particles, cellsim, material,
+(velocity, ai, character, box2d, joints, particles, cellsim, simfreeze,
 rigidbody, …) so entities settle deterministically instead of wandering /
 ragdolling off-screen. It does **NOT** pass `-headless`, so the renderer stays
 on and you can watch the window pan through the world. Passing `--headless`
 turns rendering off (faster, for unattended runs); `--no-freeze` disables the
 subsystem freeze entirely.
 
-> **Pixel-sim (sand/water/lava) during a sweep — two different freeze knobs, do
-> not confuse them:**
+> **Pixel-sim (sand/water/lava) during a sweep — two freeze knobs, do not
+> confuse them:**
 > - `cellsim` NOPs `GridWorld_StepSimulation` (the single-threaded entry). The
 >   threaded "Falling Everything" cell dispatch bypasses it, so `cellsim` **alone
 >   barely dampens** liquid motion. This is the origin of the old "material
->   doesn't freeze" lore.
-> - `material` NOPs `MaterialReaction_SimulateGravityAndSpread` (@`0x00709fc0`) —
->   the material gravity + spread body itself, so it stops cell motion
->   **regardless of caller**, and it does **not** touch chunk streaming, so it is
->   **sweep-safe**. This is the "fixed materials pause" — the producer's freeze
->   list includes it, and you can confirm it took by grepping the worker's
->   `noita_hook.log` for `subsys MaterialReaction_SimulateGravityAndSpread NOP'd`.
->   (Not byte-verified frozen *mid-sweep* — MATDUMP/MATSIM drive the same grid
->   gate and can't run during a sweep — but it is the correct, targeted stop.)
+>   doesn't freeze" lore. Kept in the list — it's a different function, no
+>   conflict.
+> - `simfreeze` gates all four per-cell-class step methods (fire / gas / liquid /
+>   solid) behind a flag while leaving the render raster live, so it stops the
+>   gravity-driven cell motion **regardless of caller** and the world still
+>   **draws and captures** under a moving camera. Sweep-safe; installed race-free
+>   at DllMain via the disable-subsystems env token. Confirm it took by grepping
+>   the worker's `noita_hook.log` for `simfreeze -> cell sim frozen`.
+>   (It supersedes the older fire-only `material` NOP of the same step entry —
+>   the two **cannot** coexist, they patch the same bytes, so the list carries
+>   `simfreeze` *instead of* `material`, never both.)
 >
 > Either way the entity fixtures match on entity **spawns**, not cells, and the
 > producer's `--quiet-frames`/`--max-settle` settle absorbs residual churn.

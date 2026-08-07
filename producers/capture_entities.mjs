@@ -70,6 +70,14 @@ function parseArgs(argv) {
         // captured only ~half the entities (64% run-to-run stable); 30/4000
         // saturates to ~93%+ stable. Completeness > speed for a frozen corpus.
         headless: false, dryRun: false, forceOpen: true, filterNoise: true, fogReveal: false,
+        // Sweep each holy-mountain/temple tile first (centered) so its one-shot
+        // shop spawner fires under logging. The row-major walk otherwise
+        // generates that chunk from a neighbour tile ~1000px away, the
+        // proximity-gated spawner never fires, and the shop wands are lost for
+        // the run (deterministically — a plain re-sweep reproduces the miss).
+        // Primed tiles are skipped in the rect walk, so nothing is duplicated.
+        // --no-prime-temples opts out.
+        primeTemples: true,
         // Tuned for frozen sim (2026-06-04): quiet-detection wins at p50~740ms
         // /p90~1430ms, so 20 quiet-frames + a 3000ms backstop cap gives 100%
         // run-to-run stability at ~1.2s/tile (full main world ≈18 min). The
@@ -117,6 +125,7 @@ function parseArgs(argv) {
         else if (a === '--no-force-open') o.forceOpen = false;
         else if (a === '--no-all-unlocks') o.allUnlocks = false;
         else if (a === '--no-filter-noise') o.filterNoise = false;
+        else if (a === '--no-prime-temples') o.primeTemples = false;
         else if (a === '--fog-reveal') o.fogReveal = true;
         else if (a === '--no-freeze') o.disableSubs = '';
         else if (a.startsWith('--disable-subsystems=')) o.disableSubs = a.slice(21);
@@ -167,6 +176,7 @@ function runSweep(opts, region, bbox, outDir) {
     if (opts.disableSubs) args.push('-disable-subsystems', opts.disableSubs);
     if (opts.headless) args.push('-headless');
     if (opts.forceOpen) args.push('-force-open-chests');
+    if (opts.primeTemples) args.push('-prime-temples');
     if (opts.allUnlocks) args.push('-all-unlocks');
     if (opts.filterNoise) args.push('-filter-noise');
     if (opts.fogReveal) args.push('-fog-reveal');

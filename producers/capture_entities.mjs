@@ -108,7 +108,7 @@ function parseArgs(argv) {
         // modeled-kind capture AND faster settle. (Lukki spiders still move via
         // a non-alias path but it provably doesn't perturb captured entities.)
         // --disable-subsystems=LIST overrides; --no-freeze disables.
-        disableSubs: 'lighting,guns,velocity,ai,character,worms,pathfinding,box2d,joints,particles,cellsim,material,simplephysics,rigidbody,explosions,explosions_queue,vphysics,verlet,game_effects,creatures',
+        disableSubs: 'lighting,guns,velocity,ai,character,worms,pathfinding,box2d,joints,particles,cellsim,simfreeze,simplephysics,rigidbody,explosions,explosions_queue,vphysics,verlet,game_effects,creatures',
     };
     for (const a of argv) {
         if (a.startsWith('--seed=')) o.seed = +a.slice(7);
